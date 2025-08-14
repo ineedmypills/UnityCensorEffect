@@ -4,11 +4,6 @@
   "displayName": "Censor Effect",
   "description": "A camera effect to censor objects on a specific layer with a pixelated shader",
   "unity": "2019.1",
-  "author": {
-    "name": "ineedmypills",
-    "email": "egor.glukhikh06@gmail.com",
-    "url": "https://github.com/ineedmypills"
-  },
   "keywords": [
     "censor",
     "pixelated",
@@ -16,6 +11,12 @@
     "shader",
     "post-processing"
   ],
+
+  "author": {
+    "name": "ineedmypills",
+    "email": "egor.glukhikh06@gmail.com",
+    "url": "https://github.com/ineedmypills"
+  },
   "dependencies": {},
   "type": "library",
   "main": "Runtime/CensorEffect.cs"
