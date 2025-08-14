@@ -12,3 +12,19 @@ A simple and lightweight camera post-processing effect to censor objects on a sp
 3. Enter the following URL and click `Add`:
 
 
+## How to Use
+1.  **Add the Censor Effect Component:**
+    *   Select the `Camera` GameObject in your scene.
+    *   In the Inspector, click `Add Component` and search for `CensorEffect`. Add it to the camera.
+
+2.  **Create a Censor Layer:**
+    *   Go to `Edit` > `Project Settings` > `Tags and Layers`.
+    *   Under `Layers`, add a new layer (e.g., "Censored").
+
+3.  **Assign Objects to the Layer:**
+    *   Select the GameObjects you want to censor.
+    *   In the Inspector, change their `Layer` to the "Censored" layer you just created.
+
+4.  **Configure the Censor Effect:**
+    *   Select your `Camera` GameObject again.
+    *   In the `CensorEffect` component in the Inspector, set the `Censor Layer` property to the "Censored" layer.

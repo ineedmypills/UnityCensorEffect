@@ -16,5 +16,7 @@
     "shader",
     "post-processing"
   ],
-  "dependencies": {}
+  "dependencies": {},
+  "type": "library",
+  "main": "Runtime/CensorEffect.cs"
 }
