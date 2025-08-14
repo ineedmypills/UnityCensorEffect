@@ -56,12 +56,15 @@ namespace CensorEffect.Runtime
             {
                 if (_censorCamera == null)
                 {
-                    var go = new GameObject("CensorCamera")
+                    var go = new GameObject("CensorCamera (hidden)", typeof(Camera))
                     {
                         hideFlags = HideFlags.HideAndDontSave
                     };
-                    go.transform.SetParent(MainCamera.transform, false);
-                    _censorCamera = go.AddComponent<Camera>();
+                    go.transform.parent = MainCamera.transform;
+                    go.transform.localPosition = Vector3.zero;
+                    go.transform.localRotation = Quaternion.identity;
+                    
+                    _censorCamera = go.GetComponent<Camera>();
                     _censorCamera.enabled = false;
                 }
                 return _censorCamera;
@@ -215,7 +218,23 @@ namespace CensorEffect.Runtime
 
         private void UpdateCensorCamera()
         {
-            CensorCamera.CopyFrom(MainCamera);
+            // CensorCamera.CopyFrom(MainCamera); // This can copy unwanted settings, so we do it manually.
+            
+            // Copy essential properties from the main camera
+            CensorCamera.orthographic = MainCamera.orthographic;
+            if (CensorCamera.orthographic)
+            {
+                CensorCamera.orthographicSize = MainCamera.orthographicSize;
+            }
+            else
+            {
+                CensorCamera.fieldOfView = MainCamera.fieldOfView;
+            }
+            CensorCamera.aspect = MainCamera.aspect;
+            CensorCamera.nearClipPlane = MainCamera.nearClipPlane;
+            CensorCamera.farClipPlane = MainCamera.farClipPlane;
+            CensorCamera.renderingPath = MainCamera.renderingPath;
+
             CensorCamera.enabled = false;
             CensorCamera.cullingMask = CensorLayer;
             CensorCamera.backgroundColor = Color.clear;
