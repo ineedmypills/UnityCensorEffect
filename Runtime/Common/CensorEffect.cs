@@ -79,13 +79,21 @@ namespace CensorEffect.Runtime
         {
             if (CensorMaskMaterial != null)
             {
+                #if UNITY_EDITOR
                 DestroyImmediate(CensorMaskMaterial);
+                #else
+                Destroy(CensorMaskMaterial);
+                #endif
                 CensorMaskMaterial = null;
             }
 
             if (CensorEffectMaterial != null)
             {
+                #if UNITY_EDITOR
                 DestroyImmediate(CensorEffectMaterial);
+                #else
+                Destroy(CensorEffectMaterial);
+                #endif
                 CensorEffectMaterial = null;
             }
         }

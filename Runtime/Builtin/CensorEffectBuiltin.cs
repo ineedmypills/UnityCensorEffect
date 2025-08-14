@@ -31,13 +31,22 @@ namespace CensorEffect.Runtime.Builtin
         {
             if (_censorCamera != null)
             {
+                #if UNITY_EDITOR
                 DestroyImmediate(_censorCamera.gameObject);
+                #else
+                Destroy(_censorCamera.gameObject);
+                #endif
                 _censorCamera = null;
             }
-            if (_censorMaskTexture != null)
+
+            if (_blurMaterial != null)
             {
-                RenderTexture.ReleaseTemporary(_censorMaskTexture);
-                _censorMaskTexture = null;
+                #if UNITY_EDITOR
+                DestroyImmediate(_blurMaterial);
+                #else
+                Destroy(_blurMaterial);
+                #endif
+                _blurMaterial = null;
             }
         }
 
@@ -67,13 +76,13 @@ namespace CensorEffect.Runtime.Builtin
             _censorEffect.UpdateMaterialProperties(_mainCamera);
 
             // Get a temporary texture for the mask
-            _censorMaskTexture = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.A8);
+            var censorMaskTexture = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.A8);
 
             // Setup and render the mask
             var censorCam = GetCensorCamera();
             censorCam.CopyFrom(_mainCamera);
             censorCam.cullingMask = _censorEffect.CensorLayer;
-            censorCam.targetTexture = _censorMaskTexture;
+            censorCam.targetTexture = censorMaskTexture;
             censorCam.clearFlags = CameraClearFlags.SolidColor;
             censorCam.backgroundColor = Color.clear;
             censorCam.RenderWithShader(_censorEffect.CensorMaskMaterial.shader, "RenderType");
@@ -84,20 +93,20 @@ namespace CensorEffect.Runtime.Builtin
                 _blurMaterial.SetFloat("_BlurSize", _censorEffect.CensorAreaExpansion);
                 var tempBlurTex = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.A8);
 
-                Graphics.Blit(_censorMaskTexture, tempBlurTex, _blurMaterial, 0); // Horizontal
-                Graphics.Blit(tempBlurTex, _censorMaskTexture, _blurMaterial, 1); // Vertical
+                Graphics.Blit(censorMaskTexture, tempBlurTex, _blurMaterial, 0); // Horizontal
+                Graphics.Blit(tempBlurTex, censorMaskTexture, _blurMaterial, 1); // Vertical
 
                 RenderTexture.ReleaseTemporary(tempBlurTex);
             }
 
             // Set the mask texture for the effect material
-            _censorEffect.CensorEffectMaterial.SetTexture(CensorEffect.CensorMaskID, _censorMaskTexture);
+            _censorEffect.CensorEffectMaterial.SetTexture(CensorEffect.CensorMaskID, censorMaskTexture);
 
             // Blit the final effect
             Graphics.Blit(source, destination, _censorEffect.CensorEffectMaterial);
 
             // Cleanup
-            RenderTexture.ReleaseTemporary(_censorMaskTexture);
+            RenderTexture.ReleaseTemporary(censorMaskTexture);
         }
     }
 }

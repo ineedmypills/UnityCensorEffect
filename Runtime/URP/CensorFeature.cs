@@ -8,6 +8,12 @@ namespace CensorEffect.Runtime.URP
         private CensorRenderPass _censorPass;
         private CensorEffect _censorEffect;
 
+        protected override void Dispose(bool disposing)
+        {
+            _censorPass?.Dispose();
+            _censorPass = null;
+        }
+
         public override void Create()
         {
             // This is called by the URP renderer
