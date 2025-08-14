@@ -1,9 +1,9 @@
 ﻿{
   "name": "com.ineedmypills.censor-effect",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "displayName": "Censor Effect",
-  "description": "A camera effect to censor objects on a specific layer with a pixelated shader",
-  "unity": "2019.1",
+  "description": "A versatile and performant camera effect to censor objects on a specific layer with a pixelated shader. Supports Built-in and Universal Render Pipeline (URP), with depth-based occlusion and a smooth expansion effect.",
+  "unity": "2019.4",
   "keywords": [
     "censor",
     "pixelated",
