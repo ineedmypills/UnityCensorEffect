@@ -30,6 +30,21 @@ namespace CensorEffect.Runtime.URP
                     _blurMaterial = new Material(shader);
                 }
             }
+
+            // Drawing settings only need to be created once
+            _drawingSettings = new DrawingSettings(new ShaderTagId("UniversalForward"), new SortingSettings());
+        }
+
+        public void Dispose()
+        {
+            if (_blurMaterial != null)
+            {
+                #if UNITY_EDITOR
+                Object.DestroyImmediate(_blurMaterial);
+                #else
+                Object.Destroy(_blurMaterial);
+                #endif
+            }
         }
 
         public void Setup(RenderTargetIdentifier cameraColorTarget)
@@ -55,9 +70,11 @@ namespace CensorEffect.Runtime.URP
 
             // 1. Draw the censor mask
             _censorEffect.UpdateMaterialProperties(renderingData.cameraData.camera);
-            _drawingSettings = CreateDrawingSettings(new ShaderTagId("UniversalForward"), ref renderingData, SortingCriteria.CommonOpaque);
+
+            _drawingSettings.sortingSettings = new SortingSettings(renderingData.cameraData.camera) { criteria = SortingCriteria.CommonOpaque };
             _drawingSettings.overrideMaterial = _censorEffect.CensorMaskMaterial;
             _drawingSettings.overrideMaterialPassIndex = 0;
+
             context.DrawRenderers(renderingData.cullResults, ref _drawingSettings, ref _filteringSettings);
 
             // 2. Blur the mask

@@ -2,91 +2,76 @@ Shader "Hidden/CensorEffect"
 {
     Properties
     {
-        [HideInInspector] _MainTex("Screen", 2D) = "white" {}
-        [HideInInspector] _CensorMask("Censor Mask", 2D) = "black" {}
-        [HideInInspector] _PixelSize("Pixel Size", Float) = 10.0
-        [HideInInspector] _CensorAreaExpansion("Censor Area Expansion", Float) = 0.0
-        [HideInInspector] _AntiAliasing("Anti-Aliasing", Float) = 1
+        [HideInInspector] _MainTex ("Screen", 2D) = "white" {}
+        [HideInInspector] _CensorMask ("Censor Mask", 2D) = "black" {}
+        [HideInInspector] _PixelSize ("Pixel Size", Float) = 10.0
+        [HideInInspector] _AntiAliasing ("Anti-Aliasing", Float) = 1.0
     }
-
     SubShader
     {
-        Tags { "RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline" }
-        LOD 100
-        ZWrite Off
-        Cull Off
-        ZTest Always
+        Cull Off ZWrite Off ZTest Always
 
         Pass
         {
-            Name "CensorEffect"
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #include "UnityCG.cginc"
 
-            HLSLPROGRAM
-            #pragma vertex Vert
-            #pragma fragment Frag
-
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
-
-            struct Attributes
+            struct appdata
             {
-                float4 positionOS   : POSITION;
-                float2 uv           : TEXCOORD0;
+                float4 vertex : POSITION;
+                float2 uv : TEXCOORD0;
             };
 
-            struct Varyings
+            struct v2f
             {
-                float4 positionHCS  : SV_POSITION;
-                float2 uv           : TEXCOORD0;
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
             };
 
-            TEXTURE2D(_MainTex);
-            SAMPLER(sampler_MainTex);
-            TEXTURE2D(_CensorMask);
-            SAMPLER(sampler_CensorMask);
-
-            CBUFFER_START(UnityPerMaterial)
-            float4 _MainTex_ST;
+            sampler2D _MainTex;
+            sampler2D _CensorMask;
             float _PixelSize;
-            float _CensorAreaExpansion;
             float _AntiAliasing;
-            CBUFFER_END
 
-            Varyings Vert(Attributes input)
+            v2f vert (appdata v)
             {
-                Varyings output;
-                output.positionHCS = TransformObjectToHClip(input.positionOS.xyz);
-                output.uv = input.uv;
-                return output;
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = v.uv;
+                return o;
             }
 
-            half4 Frag(Varyings input) : SV_Target
+            fixed4 frag (v2f i) : SV_Target
             {
                 // Calculate pixelated coordinates
                 float2 pixelGrid = _ScreenParams.xy / _PixelSize;
-                float2 pixelatedUV = round(input.uv * pixelGrid) / pixelGrid;
+                float2 pixelatedUV = round(i.uv * pixelGrid) / pixelGrid;
 
                 // Sample original color
-                half4 originalColor = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv);
+                fixed4 originalColor = tex2D(_MainTex, i.uv);
 
-                // Sample mask
-                half mask = SAMPLE_TEXTURE2D(_CensorMask, sampler_CensorMask, pixelatedUV).a;
+                // Sample mask from the pixelated UV to ensure mask aligns with pixels
+                fixed mask = tex2D(_CensorMask, pixelatedUV).a;
 
                 if (mask > 0.01)
                 {
-                    half4 pixelatedColor = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, pixelatedUV);
+                    fixed4 pixelatedColor = tex2D(_MainTex, pixelatedUV);
 
+                    // Apply anti-aliasing if enabled
                     if (_AntiAliasing > 0.5)
                     {
-                        half smoothMask = smoothstep(0.2, 0.8, mask);
-                        return lerp(originalColor, pixelatedColor, smoothMask);
+                        // Use the original (non-pixelated) mask sample for a smoother edge
+                        fixed smoothMask = tex2D(_CensorMask, i.uv).a;
+                        return lerp(originalColor, pixelatedColor, smoothstep(0.0, 1.0, smoothMask));
                     }
-                    return lerp(originalColor, pixelatedColor, mask);
+                    return pixelatedColor;
                 }
 
                 return originalColor;
             }
-            ENDHLSL
+            ENDCG
         }
     }
     Fallback Off

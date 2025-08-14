@@ -45,15 +45,15 @@ Shader "Hidden/CensorBlur"
             fixed4 frag (v2f i) : SV_Target
             {
                 float4 col = 0;
-                float2 uv = i.uv;
-                float halfBlur = _BlurSize * 0.5;
+                int radius = (int)_BlurSize;
+                int sampleCount = 0;
 
-                // Simple box blur for performance
-                for (float x = -halfBlur; x <= halfBlur; x++)
+                for (int x = -radius; x <= radius; x++)
                 {
-                    col += tex2D(_MainTex, uv + float2(x * _MainTex_TexelSize.x, 0));
+                    col += tex2D(_MainTex, i.uv + float2(x * _MainTex_TexelSize.x, 0));
+                    sampleCount++;
                 }
-                return col / (_BlurSize);
+                return col / sampleCount;
             }
             ENDCG
         }
@@ -93,14 +93,15 @@ Shader "Hidden/CensorBlur"
             fixed4 frag (v2f i) : SV_Target
             {
                 float4 col = 0;
-                float2 uv = i.uv;
-                float halfBlur = _BlurSize * 0.5;
+                int radius = (int)_BlurSize;
+                int sampleCount = 0;
 
-                for (float y = -halfBlur; y <= halfBlur; y++)
+                for (int y = -radius; y <= radius; y++)
                 {
-                    col += tex2D(_MainTex, uv + float2(0, y * _MainTex_TexelSize.y));
+                    col += tex2D(_MainTex, i.uv + float2(0, y * _MainTex_TexelSize.y));
+                    sampleCount++;
                 }
-                return col / (_BlurSize);
+                return col / sampleCount;
             }
             ENDCG
         }
