@@ -1,6 +1,21 @@
 ﻿# Changelog
 All notable changes to this package will be documented in this file.
 
+## [2.0.0] - 2025-08-14
+### Added
+- **Universal Render Pipeline (URP) Support:** The effect now fully supports URP via a custom `ScriptableRendererFeature`.
+- **Occlusion Support:** Added an `Enable Occlusion` option. When enabled, censored objects will be correctly hidden by other objects in the foreground.
+- **Built-in Pipeline Renderer:** Created a dedicated renderer component for the Built-in pipeline to ensure compatibility.
+
+### Changed
+- **Project Structure:** Completely refactored the package to support multiple render pipelines using Assembly Definitions.
+- **Expansion Effect:** Replaced the old, inefficient expansion algorithm with a performant two-pass blur, resulting in a smoother and more configurable effect.
+- **Shader Code:** All shaders were rewritten from CG to HLSL for modern pipeline compatibility.
+- **Component Workflow:** The main `CensorEffect` component is now a clean data container, with renderer-specific logic handled by separate components.
+
+### Removed
+- Removed the old `OnRenderImage` logic from the main component, which is now handled by the dedicated `CensorEffectBuiltin` script.
+
 ## [1.1.0] - 2025-08-14
 ### Added:
 Physically-based expansion
