@@ -1,0 +1,20 @@
+﻿{
+  "name": "com.ineedmypills.censor-effect",
+  "version": "1.0.0",
+  "displayName": "Censor Effect",
+  "description": "A camera effect to censor objects on a specific layer with a pixelated shader",
+  "unity": "2019.1",
+  "author": {
+    "name": "ineedmypills",
+    "email": "egor.glukhikh06@gmail.com",
+    "url": "https://github.com/ineedmypills"
+  },
+  "keywords": [
+    "censor",
+    "pixelated",
+    "effect",
+    "shader",
+    "post-processing"
+  ],
+  "dependencies": {}
+}
