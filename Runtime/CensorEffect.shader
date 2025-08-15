@@ -46,7 +46,7 @@ Shader "Hidden/CensorEffect"
             fixed4 frag (v2f i) : SV_Target
             {
                 // Calculate pixelated coordinates
-                float2 pixelGrid = float2(_ScreenParams.y / _PixelSize * _ScreenParams.x / _ScreenParams.y, _ScreenParams.y / _PixelSize);
+                float2 pixelGrid = float2(_PixelSize * _ScreenParams.x / _ScreenParams.y, _PixelSize);
                 float2 pixelatedUV = round(i.uv * pixelGrid) / pixelGrid;
 
                 // Sample original color
