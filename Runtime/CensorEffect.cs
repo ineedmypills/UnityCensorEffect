@@ -79,7 +79,7 @@ namespace CensorEffect.Runtime
 
             UpdateMaterialProperties();
 
-            var maskDescriptor = new RenderTextureDescriptor(source.width, source.height, RenderTextureFormat.R8, 0)
+            var maskDescriptor = new RenderTextureDescriptor(source.width, source.height, RenderTextureFormat.R8, 16)
             {
                 msaaSamples = EnableAntiAliasing ? GetMsaaSampleCount(source) : 1
             };
@@ -197,21 +197,19 @@ namespace CensorEffect.Runtime
         {
             if (source == null || target == null) return;
 
-            // Manually copy essential properties instead of using Camera.CopyFrom()
-            target.transform.position = source.transform.position;
-            target.transform.rotation = source.transform.rotation;
-            target.fieldOfView = source.fieldOfView;
-            target.nearClipPlane = source.nearClipPlane;
-            target.farClipPlane = source.farClipPlane;
-            target.orthographic = source.orthographic;
-            target.orthographicSize = source.orthographicSize;
-            target.aspect = source.aspect;
+            // Copy all properties from the source camera, which is more robust than
+            // manually setting each property. This ensures properties like the
+            // projection matrix are correctly synchronized, which is crucial for
+            // depth buffer sampling.
+            target.CopyFrom(source);
 
+            // Override specific properties for the censor camera's unique role.
             target.depthTextureMode |= DepthTextureMode.Depth;
             target.cullingMask = CensorLayer;
             target.clearFlags = CameraClearFlags.SolidColor;
             target.backgroundColor = Color.clear;
             target.useOcclusionCulling = false;
+            target.allowMSAA = true; // Ensure MSAA is explicitly allowed
         }
 
         private int GetMsaaSampleCount(RenderTexture source)
