@@ -40,6 +40,7 @@ A versatile and performant camera effect to censor objects on a specific layer w
 #### For Built-in Render Pipeline
 No extra steps are needed! The effect will automatically detect the pipeline and configure itself.
 
+
 #### For Universal Render Pipeline (URP)
 1.  Select your **URP Renderer** asset (usually found in your project's `Settings` folder, assigned to your URP Asset).
 2.  In the Inspector for the Renderer, click the **`Add Renderer Feature`** button.
