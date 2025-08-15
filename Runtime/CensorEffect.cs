@@ -157,7 +157,7 @@ namespace CensorEffect.Runtime
             // Part 4: Cleanup
             _commandBuffer.ReleaseTemporaryRT(_censorMaskID);
 
-            _mainCamera.AddCommandBuffer(CameraEvent.AfterForwardOpaque, _commandBuffer);
+            _mainCamera.AddCommandBuffer(CameraEvent.BeforeImageEffects, _commandBuffer);
         }
 
 
@@ -214,7 +214,7 @@ namespace CensorEffect.Runtime
         {
             if (_commandBuffer != null)
             {
-                _mainCamera.RemoveCommandBuffer(CameraEvent.AfterForwardOpaque, _commandBuffer);
+                _mainCamera.RemoveCommandBuffer(CameraEvent.BeforeImageEffects, _commandBuffer);
                 _commandBuffer.Release();
                 _commandBuffer = null;
             }
