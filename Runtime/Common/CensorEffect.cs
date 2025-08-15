@@ -13,9 +13,9 @@ namespace CensorEffect.Runtime
         [Tooltip("Use the depth buffer to hide censored objects behind other objects.")]
         public bool EnableOcclusion = true;
 
-        [Tooltip("Physical size of pixel blocks in world units.")]
-        [Min(0.001f)]
-        public float PixelWorldSize = 0.1f;
+        [Tooltip("The number of pixel blocks to draw across the screen's height. Smaller numbers mean larger blocks.")]
+        [Range(1, 512)]
+        public float PixelBlockCount = 100f;
 
         [Tooltip("Expand the censored area in world units.")]
         [Min(0)]
@@ -36,7 +36,6 @@ namespace CensorEffect.Runtime
         public static readonly int CensorMaskID = Shader.PropertyToID("_CensorMask");
         public static readonly int ZTestID = Shader.PropertyToID("_ZTest");
 
-
         private void OnEnable()
         {
             InitializeMaterials();
@@ -49,9 +48,7 @@ namespace CensorEffect.Runtime
 
         private void OnValidate()
         {
-            PixelWorldSize = Mathf.Max(0.001f, PixelWorldSize);
             CensorAreaExpansion = Mathf.Max(0, CensorAreaExpansion);
-
             InitializeMaterials();
         }
 
@@ -103,11 +100,9 @@ namespace CensorEffect.Runtime
         {
             if (CensorEffectMaterial == null || camera == null) return;
 
-            float pixelSize = CalculatePixelSize(camera);
-            float expansionSize = CalculateExpansionSize(camera);
 
-            CensorEffectMaterial.SetFloat(PixelSizeID, pixelSize);
-            CensorEffectMaterial.SetFloat(CensorAreaExpansionID, expansionSize);
+            CensorEffectMaterial.SetFloat(PixelSizeID, PixelBlockCount);
+            CensorEffectMaterial.SetFloat(CensorAreaExpansionID, CensorAreaExpansion); // This will be used by the blur shader
             CensorEffectMaterial.SetFloat(AntiAliasingID, EnableAntiAliasing ? 1f : 0f);
 
             if (CensorMaskMaterial != null)
@@ -116,30 +111,116 @@ namespace CensorEffect.Runtime
             }
         }
 
-        private float CalculatePixelSize(Camera camera)
+        private void Awake()
         {
-            float size = PixelWorldSize;
-            if (camera.orthographic)
+            if (UnityEngine.Rendering.GraphicsSettings.renderPipelineAsset == null)
             {
-                return camera.orthographicSize * 2f / camera.pixelHeight * size;
+                // We are in the Built-in Render Pipeline
+                if (GetComponent<CensorEffectBuiltin>() == null)
+                {
+                    gameObject.AddComponent<CensorEffectBuiltin>();
+                }
             }
-
-            float fov = camera.fieldOfView * Mathf.Deg2Rad;
-            float worldHeight = 2.0f * 1.0f * Mathf.Tan(fov * 0.5f);
-            return size * (camera.pixelHeight / worldHeight);
         }
 
-        private float CalculateExpansionSize(Camera camera)
+        /// <summary>
+        /// Nested class to handle the Built-in Render Pipeline implementation.
+        /// This is added automatically by the main CensorEffect script.
+        /// </summary>
+        [DisallowMultipleComponent]
+        private class CensorEffectBuiltin : MonoBehaviour
         {
-            float expansion = CensorAreaExpansion;
-            if (camera.orthographic)
+            private CensorEffect _censorEffect;
+            private Camera _mainCamera;
+            private Camera _censorCamera;
+            private Material _blurMaterial;
+
+            private void OnEnable()
             {
-                return expansion / (camera.orthographicSize * 2f) * camera.pixelHeight;
+                _censorEffect = GetComponent<CensorEffect>();
+                _mainCamera = GetComponent<Camera>();
+
+                if (_blurMaterial == null)
+                {
+                    var shader = Shader.Find("Hidden/CensorBlur");
+                    if (shader != null)
+                    {
+                        _blurMaterial = new Material(shader);
+                    }
+                }
             }
 
-            float fov = camera.fieldOfView * Mathf.Deg2Rad;
-            float worldHeight = 2.0f * 1.0f * Mathf.Tan(fov * 0.5f);
-            return expansion * (camera.pixelHeight / worldHeight);
+            private void OnDisable()
+            {
+                if (_censorCamera != null)
+                {
+                    #if UNITY_EDITOR
+                    DestroyImmediate(_censorCamera.gameObject);
+                    #else
+                    Destroy(_censorCamera.gameObject);
+                    #endif
+                    _censorCamera = null;
+                }
+
+                if (_blurMaterial != null)
+                {
+                    #if UNITY_EDITOR
+                    DestroyImmediate(_blurMaterial);
+                    #else
+                    Destroy(_blurMaterial);
+                    #endif
+                    _blurMaterial = null;
+                }
+            }
+
+            private Camera GetCensorCamera()
+            {
+                if (_censorCamera == null)
+                {
+                    var go = new GameObject("Censor Mask Camera", typeof(Camera))
+                    {
+                        hideFlags = HideFlags.HideAndDontSave
+                    };
+                    _censorCamera = go.GetComponent<Camera>();
+                    _censorCamera.enabled = false;
+                }
+                return _censorCamera;
+            }
+
+            void OnRenderImage(RenderTexture source, RenderTexture destination)
+            {
+                if (_censorEffect == null || _censorEffect.CensorEffectMaterial == null || _censorEffect.CensorMaskMaterial == null)
+                {
+                    Graphics.Blit(source, destination);
+                    return;
+                }
+
+                _censorEffect.UpdateMaterialProperties(_mainCamera);
+                var censorMaskTexture = RenderTexture.GetTemporary(source.width, source.height, 24, UnityEngine.RenderTextureFormat.R8);
+
+                var censorCam = GetCensorCamera();
+                censorCam.CopyFrom(_mainCamera);
+                censorCam.cullingMask = _censorEffect.CensorLayer;
+                censorCam.targetTexture = censorMaskTexture;
+                censorCam.clearFlags = CameraClearFlags.SolidColor;
+                censorCam.backgroundColor = Color.clear;
+                censorCam.RenderWithShader(_censorEffect.CensorMaskMaterial.shader, "RenderType");
+
+                if (_censorEffect.CensorAreaExpansion > 0 && _blurMaterial != null)
+                {
+                    _blurMaterial.SetFloat("_BlurSize", _censorEffect.CensorAreaExpansion);
+                    var tempBlurTex = RenderTexture.GetTemporary(source.width, source.height, 24, UnityEngine.RenderTextureFormat.R8);
+
+                    Graphics.Blit(censorMaskTexture, tempBlurTex, _blurMaterial, 0);
+                    Graphics.Blit(tempBlurTex, censorMaskTexture, _blurMaterial, 1);
+
+                    RenderTexture.ReleaseTemporary(tempBlurTex);
+                }
+
+                _censorEffect.CensorEffectMaterial.SetTexture(CensorMaskID, censorMaskTexture);
+                Graphics.Blit(source, destination, _censorEffect.CensorEffectMaterial);
+                RenderTexture.ReleaseTemporary(censorMaskTexture);
+            }
         }
     }
 }

@@ -56,7 +56,6 @@ namespace CensorEffect.Runtime.URP
         {
             cameraTextureDescriptor.colorFormat = RenderTextureFormat.R8;
             cmd.GetTemporaryRT(_censorMaskTexture.id, cameraTextureDescriptor, FilterMode.Bilinear);
-
             ConfigureTarget(_censorMaskTexture.Identifier());
             ConfigureClear(ClearFlag.All, Color.clear);
         }
@@ -86,7 +85,6 @@ namespace CensorEffect.Runtime.URP
                 int tempBlurTexId = Shader.PropertyToID("_TempBlurTexture");
                 var desc = renderingData.cameraData.cameraTargetDescriptor;
                 desc.colorFormat = RenderTextureFormat.R8;
-
                 cmd.GetTemporaryRT(tempBlurTexId, desc, FilterMode.Bilinear);
 
                 // Horizontal blur

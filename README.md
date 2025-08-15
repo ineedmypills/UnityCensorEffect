@@ -38,8 +38,8 @@ A versatile and performant camera effect to censor objects on a specific layer w
 ### 2. Pipeline-Specific Setup
 
 #### For Built-in Render Pipeline
-1.  After adding the `CensorEffect` component, add the **`Censor Effect Builtin`** component to the same camera.
-2.  That's it! The effect will now work.
+No extra steps are needed! The effect will automatically detect the pipeline and configure itself.
+
 
 #### For Universal Render Pipeline (URP)
 1.  Select your **URP Renderer** asset (usually found in your project's `Settings` folder, assigned to your URP Asset).
@@ -51,6 +51,6 @@ A versatile and performant camera effect to censor objects on a specific layer w
 -   In the `CensorEffect` component, you can now configure the following settings:
     -   **Censor Layer:** The layer containing the objects to be pixelated.
     -   **Enable Occlusion:** If checked, censored objects will be hidden by other objects in front of them. If unchecked, the effect will appear over everything (legacy behavior).
-    -   **Pixel World Size:** The size of the pixelation blocks in world units.
+    -   **Pixel Block Count:** The number of pixel blocks to draw across the screen's height. Smaller numbers mean larger, more abstract blocks.
     -   **Censor Area Expansion:** How much to expand the censored area, useful for covering objects completely.
     -   **Enable Anti-Aliasing:** Toggles smoothing on the edges of the pixelated area.

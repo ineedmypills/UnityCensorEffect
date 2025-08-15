@@ -40,6 +40,7 @@ namespace CensorEffect.Runtime.URP
             }
 
             _censorPass.Setup(renderer.cameraColorTarget);
+            _censorPass.ConfigureInput(ScriptableRenderPassInput.Depth);
             renderer.EnqueuePass(_censorPass);
         }
     }
