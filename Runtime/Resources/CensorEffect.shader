@@ -45,31 +45,30 @@ Shader "Hidden/CensorEffect"
 
             fixed4 frag (v2f i) : SV_Target
             {
-                // Sample original color
+                // Get original color
                 fixed4 originalColor = tex2D(_MainTex, i.uv);
 
-                // Sample mask from the original UV to correctly check for occlusion and edges
-                fixed highResMask = tex2D(_CensorMask, i.uv).r;
+                // Get pixelated color
+                float2 pixelGrid = float2(_PixelSize * _ScreenParams.x / _ScreenParams.y, _PixelSize);
+                float2 pixelatedUV = round(i.uv * pixelGrid) / pixelGrid;
+                fixed4 pixelatedColor = tex2D(_MainTex, pixelatedUV);
 
-                if (highResMask > 0.01)
+                // Determine mask value based on AntiAliasing setting
+                fixed mask;
+                if (_AntiAliasing > 0.5)
                 {
-                    // We are in a censored area. Now get the pixelated color.
-                    float2 pixelGrid = float2(_PixelSize * _ScreenParams.x / _ScreenParams.y, _PixelSize);
-                    float2 pixelatedUV = round(i.uv * pixelGrid) / pixelGrid;
-                    fixed4 pixelatedColor = tex2D(_MainTex, pixelatedUV);
-
-                    // Apply anti-aliasing if enabled
-                    if (_AntiAliasing > 0.5)
-                    {
-                        // Use the high-res mask for smooth blending
-                        return lerp(originalColor, pixelatedColor, smoothstep(0.0, 1.0, highResMask));
-                    }
-
-                    // If no anti-aliasing, just return the solid pixelated color.
-                    return pixelatedColor;
+                    // Smooth mask sampling for soft edges
+                    mask = tex2D(_CensorMask, i.uv).r;
+                    mask = smoothstep(0.0, 1.0, mask);
+                }
+                else
+                {
+                    // Pixel-perfect mask sampling for sharp edges
+                    mask = tex2D(_CensorMask, pixelatedUV).r > 0.5 ? 1.0 : 0.0;
                 }
 
-                return originalColor;
+                // Final color calculation
+                return lerp(originalColor, pixelatedColor, mask);
             }
             ENDCG
         }
