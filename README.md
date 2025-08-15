@@ -42,4 +42,4 @@ The effect is now active! No other setup is required for the Built-in Render Pip
     -   **Enable Occlusion:** If checked, censored objects will be hidden by other objects in front of them. If unchecked, the effect will appear over everything (legacy behavior).
     -   **Pixel Block Count:** The number of pixel blocks to draw across the screen's height. Smaller numbers mean larger, more abstract blocks.
     -   **Censor Area Expansion:** How much to expand the censored area, useful for covering objects completely.
-    -   **Enable Anti-Aliasing:** Toggles smoothing on the edges of the pixelated area.
+    -   **Enable Anti-Aliasing:** Controls the style of the censorship border. When enabled, the edges are soft and anti-aliased. When disabled, the edges are sharp and snap perfectly to the pixelation grid.

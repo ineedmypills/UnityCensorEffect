@@ -1,6 +1,15 @@
 ﻿# Changelog
 All notable changes to this package will be documented in this file.
 
+## [2.0.1] - 2025-08-15
+### Fixed
+- Occlusion is now reliable and no longer dependent on project-wide MSAA settings. It now uses a manual depth test against the scene's depth texture.
+- `CensorAreaExpansion` now functions correctly in all scenarios, including when Anti-Aliasing is enabled or disabled.
+- A compile error caused by an incorrect API call for `msaaSamples` on `RenderTexture` has been resolved.
+
+### Changed
+- When `EnableAntiAliasing` is disabled, the censorship border is now a sharp, pixel-perfect grid, as originally intended. When enabled, it remains a smooth, anti-aliased edge.
+
 ## [2.0.0] - 2025-08-14
 ### Added
 - **Universal Render Pipeline (URP) Support:** The effect now fully supports URP via a custom `ScriptableRendererFeature`.
