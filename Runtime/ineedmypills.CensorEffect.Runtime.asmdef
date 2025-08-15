@@ -1,9 +1,7 @@
 {
-    "name": "ineedmypills.CensorEffect.Runtime.Builtin",
-    "rootNamespace": "CensorEffect.Runtime.Builtin",
-    "references": [
-        "ineedmypills.CensorEffect.Runtime.Common"
-    ],
+    "name": "ineedmypills.CensorEffect.Runtime",
+    "rootNamespace": "CensorEffect.Runtime",
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
