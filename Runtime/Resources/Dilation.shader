@@ -1,15 +1,15 @@
-Shader "Hidden/CensorBlur"
+Shader "Hidden/CensorDilation"
 {
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
-        _BlurSize ("Blur Size", Float) = 1.0
+        _DilationSize ("Dilation Size", Float) = 1.0
     }
     SubShader
     {
         Cull Off ZWrite Off ZTest Always
 
-        // Pass 0: Horizontal Gaussian Blur
+        // Pass 0: Horizontal Dilation
         Pass
         {
             CGPROGRAM
@@ -31,7 +31,7 @@ Shader "Hidden/CensorBlur"
 
             sampler2D _MainTex;
             float4 _MainTex_TexelSize;
-            float _BlurSize;
+            float _DilationSize;
 
             v2f vert(appdata v)
             {
@@ -43,28 +43,22 @@ Shader "Hidden/CensorBlur"
 
             fixed4 frag(v2f i) : SV_Target
             {
-                float2 texelSize = _MainTex_TexelSize.xy * _BlurSize;
-                fixed4 col = 0;
+                float2 texelSize = _MainTex_TexelSize.xy * _DilationSize;
+                fixed maxVal = 0;
 
-                // 9-tap Gaussian kernel weights
-                float weights[5] = { 0.227027, 0.1945946, 0.1216216, 0.05405405, 0.01621622 };
-
-                // Center sample
-                col += tex2D(_MainTex, i.uv) * weights[0];
-
-                // Symmetric samples
-                for (int j = 1; j < 5; j++)
+                // 9-tap kernel
+                for (int j = -4; j <= 4; j++)
                 {
-                    col += tex2D(_MainTex, i.uv + float2(texelSize.x * j, 0)) * weights[j];
-                    col += tex2D(_MainTex, i.uv - float2(texelSize.x * j, 0)) * weights[j];
+                    float sample = tex2D(_MainTex, i.uv + float2(texelSize.x * j, 0)).r;
+                    maxVal = max(maxVal, sample);
                 }
 
-                return col;
+                return fixed4(maxVal, maxVal, maxVal, 1);
             }
             ENDCG
         }
 
-        // Pass 1: Vertical Gaussian Blur
+        // Pass 1: Vertical Dilation
         Pass
         {
             CGPROGRAM
@@ -86,7 +80,7 @@ Shader "Hidden/CensorBlur"
 
             sampler2D _MainTex;
             float4 _MainTex_TexelSize;
-            float _BlurSize;
+            float _DilationSize;
 
             v2f vert(appdata v)
             {
@@ -98,23 +92,17 @@ Shader "Hidden/CensorBlur"
 
             fixed4 frag(v2f i) : SV_Target
             {
-                float2 texelSize = _MainTex_TexelSize.xy * _BlurSize;
-                fixed4 col = 0;
+                float2 texelSize = _MainTex_TexelSize.xy * _DilationSize;
+                fixed maxVal = 0;
 
-                // 9-tap Gaussian kernel weights
-                float weights[5] = { 0.227027, 0.1945946, 0.1216216, 0.05405405, 0.01621622 };
-
-                // Center sample
-                col += tex2D(_MainTex, i.uv) * weights[0];
-
-                // Symmetric samples
-                for (int j = 1; j < 5; j++)
+                // 9-tap kernel
+                for (int j = -4; j <= 4; j++)
                 {
-                    col += tex2D(_MainTex, i.uv + float2(0, texelSize.y * j)) * weights[j];
-                    col += tex2D(_MainTex, i.uv - float2(0, texelSize.y * j)) * weights[j];
+                     float sample = tex2D(_MainTex, i.uv + float2(0, texelSize.y * j)).r;
+                     maxVal = max(maxVal, sample);
                 }
 
-                return col;
+                return fixed4(maxVal, maxVal, maxVal, 1);
             }
             ENDCG
         }
