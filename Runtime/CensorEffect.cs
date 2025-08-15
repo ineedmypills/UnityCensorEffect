@@ -100,7 +100,7 @@ namespace CensorEffect.Runtime
 
             // The mask texture will be downsampled for the blur pass
             var maskDescriptor = new RenderTextureDescriptor(source.width, source.height, RenderTextureFormat.R8, 16);
-            maskDescriptor.msaaSamples = EnableAntiAliasing ? source.msaaSamples : 1;
+            maskDescriptor.msaaSamples = EnableAntiAliasing ? source.descriptor.msaaSamples : 1;
             var censorMaskTexture = RenderTexture.GetTemporary(maskDescriptor);
 
             RenderCensorMask(censorMaskTexture);
