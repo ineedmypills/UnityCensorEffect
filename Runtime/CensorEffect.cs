@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace CensorEffect.Runtime
 {
@@ -7,6 +8,8 @@ namespace CensorEffect.Runtime
     [RequireComponent(typeof(Camera))]
     public class CensorEffect : MonoBehaviour
     {
+        #region Public Settings
+
         [Header("Censor Settings")]
         [Tooltip("Layers to be censored.")]
         public LayerMask CensorLayer = 0;
@@ -18,7 +21,7 @@ namespace CensorEffect.Runtime
         [Range(1, 512)]
         public float PixelBlockCount = 100f;
 
-        [Tooltip("Expand the censored area in world units.")]
+        [Tooltip("How much to expand the censored area. This controls the blur radius.")]
         [Min(0)]
         public float CensorAreaExpansion = 0.1f;
 
@@ -26,7 +29,16 @@ namespace CensorEffect.Runtime
         [Tooltip("Enable smooth edges on censored areas.")]
         public bool EnableAntiAliasing = true;
 
-        // Materials
+        #endregion
+
+        #region Private Fields
+
+        // Shaders - Loaded from Resources to avoid brittle Shader.Find
+        private Shader _censorMaskShader;
+        private Shader _censorEffectShader;
+        private Shader _blurShader;
+
+        // Materials (Lazy-loaded)
         private Material _censorMaskMaterial;
         private Material _censorEffectMaterial;
         private Material _blurMaterial;
@@ -35,17 +47,29 @@ namespace CensorEffect.Runtime
         private Camera _mainCamera;
         private Camera _censorCamera;
 
-        // Shader property IDs
-        public static readonly int PixelSizeID = Shader.PropertyToID("_PixelSize");
-        public static readonly int CensorAreaExpansionID = Shader.PropertyToID("_CensorAreaExpansion");
-        public static readonly int AntiAliasingID = Shader.PropertyToID("_AntiAliasing");
-        public static readonly int CensorMaskID = Shader.PropertyToID("_CensorMask");
-        public static readonly int ZTestID = Shader.PropertyToID("_ZTest");
+        // Shader Property IDs
+        private static readonly int PixelSizeID = Shader.PropertyToID("_PixelSize");
+        private static readonly int CensorMaskID = Shader.PropertyToID("_CensorMask");
+        private static readonly int ZTestID = Shader.PropertyToID("_ZTest");
+        private static readonly int AntiAliasingID = Shader.PropertyToID("_AntiAliasing");
+        private static readonly int BlurSizeID = Shader.PropertyToID("_BlurSize");
+
+        #endregion
+
+        #region Material Properties (Lazy-Loading)
+
+        private Material CensorMaskMaterial => _censorMaskMaterial != null ? _censorMaskMaterial : (_censorMaskMaterial = CreateMaterial(_censorMaskShader));
+        private Material CensorEffectMaterial => _censorEffectMaterial != null ? _censorEffectMaterial : (_censorEffectMaterial = CreateMaterial(_censorEffectShader));
+        private Material BlurMaterial => _blurMaterial != null ? _blurMaterial : (_blurMaterial = CreateMaterial(_blurShader));
+
+        #endregion
+
+        #region Unity Methods
 
         private void OnEnable()
         {
             _mainCamera = GetComponent<Camera>();
-            InitializeMaterials();
+            LoadShaders();
         }
 
         private void OnDisable()
@@ -56,59 +80,98 @@ namespace CensorEffect.Runtime
 
         private void OnValidate()
         {
+            // Ensure expansion is non-negative
             CensorAreaExpansion = Mathf.Max(0, CensorAreaExpansion);
-            InitializeMaterials();
         }
 
-        private void InitializeMaterials()
+        void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
-            if (_censorMaskMaterial == null)
+            if (CensorEffectMaterial == null || CensorMaskMaterial == null || BlurMaterial == null)
             {
-                var shader = Shader.Find("Hidden/CensorMask");
-                if (shader != null)
-                {
-                    _censorMaskMaterial = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
-                }
+                Graphics.Blit(source, destination);
+                return;
             }
 
-            if (_censorEffectMaterial == null)
-            {
-                var shader = Shader.Find("Hidden/CensorEffect");
-                if (shader != null)
-                {
-                    _censorEffectMaterial = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
-                }
-            }
+            UpdateMaterialProperties();
 
-            if (_blurMaterial == null)
-            {
-                var shader = Shader.Find("Hidden/CensorBlur");
-                if (shader != null)
-                {
-                    _blurMaterial = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
-                }
-            }
+            // The mask texture will be downsampled for the blur pass
+            var maskDescriptor = new RenderTextureDescriptor(source.width, source.height, RenderTextureFormat.R8, 0);
+            var censorMaskTexture = RenderTexture.GetTemporary(maskDescriptor);
+
+            RenderCensorMask(censorMaskTexture);
+            ApplyBlur(censorMaskTexture);
+
+            CensorEffectMaterial.SetTexture(CensorMaskID, censorMaskTexture);
+            Graphics.Blit(source, destination, CensorEffectMaterial);
+
+            RenderTexture.ReleaseTemporary(censorMaskTexture);
+        }
+
+        #endregion
+
+        #region Core Logic
+
+        private void RenderCensorMask(RenderTexture destination)
+        {
+            var censorCam = GetCensorCamera();
+            UpdateCensorCamera(_mainCamera, censorCam);
+
+            censorCam.targetTexture = destination;
+            censorCam.RenderWithShader(CensorMaskMaterial.shader, "RenderType");
+        }
+
+        private void ApplyBlur(RenderTexture texture)
+        {
+            if (CensorAreaExpansion <= 0) return;
+
+            // Downsample for performance
+            var blurDescriptor = new RenderTextureDescriptor(texture.width / 4, texture.height / 4, RenderTextureFormat.R8, 0);
+            var tempBlurTex = RenderTexture.GetTemporary(blurDescriptor);
+
+            BlurMaterial.SetFloat(BlurSizeID, CensorAreaExpansion);
+
+            // Blit from full-res mask to downsampled temp texture
+            Graphics.Blit(texture, tempBlurTex);
+
+            // Perform blur passes
+            var tempBlurTex2 = RenderTexture.GetTemporary(blurDescriptor);
+            Graphics.Blit(tempBlurTex, tempBlurTex2, BlurMaterial, 0); // Horizontal
+            Graphics.Blit(tempBlurTex2, tempBlurTex, BlurMaterial, 1); // Vertical
+
+            // Blit from downsampled blurred texture back to the full-res mask
+            Graphics.Blit(tempBlurTex, texture);
+
+            RenderTexture.ReleaseTemporary(tempBlurTex);
+            RenderTexture.ReleaseTemporary(tempBlurTex2);
+        }
+
+        private void UpdateMaterialProperties()
+        {
+            CensorEffectMaterial.SetFloat(PixelSizeID, PixelBlockCount);
+            CensorEffectMaterial.SetFloat(AntiAliasingID, EnableAntiAliasing ? 1f : 0f);
+            CensorMaskMaterial.SetInt(ZTestID, (int)(EnableOcclusion ? CompareFunction.LessEqual : CompareFunction.Always));
+        }
+
+        #endregion
+
+        #region Resource Management
+
+        private void LoadShaders()
+        {
+            _censorMaskShader = Shader.Find("Hidden/CensorMask");
+            _censorEffectShader = Shader.Find("Hidden/CensorEffect");
+            _blurShader = Shader.Find("Hidden/CensorBlur");
         }
 
         private void CleanupMaterials()
         {
-            if (_censorMaskMaterial != null)
-            {
-                DestroyImmediate(_censorMaskMaterial);
-                _censorMaskMaterial = null;
-            }
+            if (_censorMaskMaterial != null) DestroyImmediate(_censorMaskMaterial);
+            if (_censorEffectMaterial != null) DestroyImmediate(_censorEffectMaterial);
+            if (_blurMaterial != null) DestroyImmediate(_blurMaterial);
 
-            if (_censorEffectMaterial != null)
-            {
-                DestroyImmediate(_censorEffectMaterial);
-                _censorEffectMaterial = null;
-            }
-
-            if (_blurMaterial != null)
-            {
-                DestroyImmediate(_blurMaterial);
-                _blurMaterial = null;
-            }
+            _censorMaskMaterial = null;
+            _censorEffectMaterial = null;
+            _blurMaterial = null;
         }
 
         private void CleanupCensorCamera()
@@ -134,54 +197,30 @@ namespace CensorEffect.Runtime
             return _censorCamera;
         }
 
-        private void UpdateMaterialProperties()
+        private void UpdateCensorCamera(Camera source, Camera target)
         {
-            if (_censorEffectMaterial == null || _mainCamera == null) return;
+            if (source == null || target == null) return;
 
-            _censorEffectMaterial.SetFloat(PixelSizeID, PixelBlockCount);
-            _censorEffectMaterial.SetFloat(CensorAreaExpansionID, CensorAreaExpansion);
-            _censorEffectMaterial.SetFloat(AntiAliasingID, EnableAntiAliasing ? 1f : 0f);
+            target.transform.position = source.transform.position;
+            target.transform.rotation = source.transform.rotation;
+            target.fieldOfView = source.fieldOfView;
+            target.nearClipPlane = source.nearClipPlane;
+            target.farClipPlane = source.farClipPlane;
+            target.orthographic = source.orthographic;
+            target.orthographicSize = source.orthographicSize;
+            target.aspect = source.aspect;
 
-            if (_censorMaskMaterial != null)
-            {
-                _censorMaskMaterial.SetInt(ZTestID, (int)(EnableOcclusion ? UnityEngine.Rendering.CompareFunction.LessEqual : UnityEngine.Rendering.CompareFunction.Always));
-            }
+            target.cullingMask = CensorLayer;
+            target.clearFlags = CameraClearFlags.SolidColor;
+            target.backgroundColor = Color.clear;
         }
 
-        void OnRenderImage(RenderTexture source, RenderTexture destination)
+        private Material CreateMaterial(Shader shader)
         {
-            if (_censorEffectMaterial == null || _censorMaskMaterial == null)
-            {
-                Graphics.Blit(source, destination);
-                return;
-            }
-
-            UpdateMaterialProperties();
-
-            var censorMaskTexture = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.R8);
-
-            var censorCam = GetCensorCamera();
-            censorCam.CopyFrom(_mainCamera);
-            censorCam.cullingMask = CensorLayer;
-            censorCam.targetTexture = censorMaskTexture;
-            censorCam.clearFlags = CameraClearFlags.SolidColor;
-            censorCam.backgroundColor = Color.clear;
-            censorCam.RenderWithShader(_censorMaskMaterial.shader, "RenderType");
-
-            if (CensorAreaExpansion > 0 && _blurMaterial != null)
-            {
-                _blurMaterial.SetFloat("_BlurSize", CensorAreaExpansion);
-                var tempBlurTex = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.R8);
-
-                Graphics.Blit(censorMaskTexture, tempBlurTex, _blurMaterial, 0);
-                Graphics.Blit(tempBlurTex, censorMaskTexture, _blurMaterial, 1);
-
-                RenderTexture.ReleaseTemporary(tempBlurTex);
-            }
-
-            _censorEffectMaterial.SetTexture(CensorMaskID, censorMaskTexture);
-            Graphics.Blit(source, destination, _censorEffectMaterial);
-            RenderTexture.ReleaseTemporary(censorMaskTexture);
+            if (shader == null || !shader.isSupported) return null;
+            return new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
         }
+
+        #endregion
     }
 }
