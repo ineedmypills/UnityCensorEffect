@@ -22,7 +22,6 @@ Shader "Hidden/CensorMask"
             #pragma vertex vert
             #pragma fragment frag
             #include "UnityCG.cginc"
-
             struct appdata
             {
                 float4 vertex : POSITION;
