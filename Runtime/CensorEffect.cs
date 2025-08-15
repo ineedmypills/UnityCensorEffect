@@ -150,12 +150,17 @@ namespace CensorEffect.Runtime
             // Part 3: Apply the final pixelation effect
             _commandBuffer.SetGlobalTexture(CensorMaskGlobalID, _censorMaskID);
 
-            // Blit the screen to itself using the effect material.
-            // BuiltinRenderTextureType.CameraTarget refers to the camera's current render target.
-            _commandBuffer.Blit(BuiltinRenderTextureType.CameraTarget, BuiltinRenderTextureType.CameraTarget, _censorEffectMaterial);
+            // To apply the effect, we need to copy the screen content to a temporary
+            // texture, apply the effect from that texture back to the screen.
+            // Reading from and writing to the same texture in one Blit is not safe.
+            int screenCopyID = Shader.PropertyToID("_ScreenCopy");
+            _commandBuffer.GetTemporaryRT(screenCopyID, _mainCamera.pixelWidth, _mainCamera.pixelHeight, 0, FilterMode.Bilinear, RenderTextureFormat.Default);
+            _commandBuffer.Blit(BuiltinRenderTextureType.CameraTarget, screenCopyID);
+            _commandBuffer.Blit(screenCopyID, BuiltinRenderTextureType.CameraTarget, _censorEffectMaterial);
 
             // Part 4: Cleanup
             _commandBuffer.ReleaseTemporaryRT(_censorMaskID);
+            _commandBuffer.ReleaseTemporaryRT(screenCopyID);
 
             _mainCamera.AddCommandBuffer(CameraEvent.BeforeImageEffects, _commandBuffer);
         }
