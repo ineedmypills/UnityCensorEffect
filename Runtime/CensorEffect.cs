@@ -143,25 +143,16 @@ namespace CensorEffect.Runtime
 
         private void ApplyBlur(RenderTexture texture)
         {
-            // Downsample for performance
-            var blurDescriptor = new RenderTextureDescriptor(texture.width / 4, texture.height / 4, RenderTextureFormat.R8, 0);
-            var tempBlurTex = RenderTexture.GetTemporary(blurDescriptor);
+            // Get a temporary texture for the blur passes that matches the source
+            var tempBlurTex = RenderTexture.GetTemporary(texture.descriptor);
 
             BlurMaterial.SetFloat(BlurSizeID, CensorAreaExpansion);
 
-            // Blit from full-res mask to downsampled temp texture
-            Graphics.Blit(texture, tempBlurTex);
-
             // Perform blur passes
-            var tempBlurTex2 = RenderTexture.GetTemporary(blurDescriptor);
-            Graphics.Blit(tempBlurTex, tempBlurTex2, BlurMaterial, 0); // Horizontal
-            Graphics.Blit(tempBlurTex2, tempBlurTex, BlurMaterial, 1); // Vertical
-
-            // Blit from downsampled blurred texture back to the full-res mask
-            Graphics.Blit(tempBlurTex, texture);
+            Graphics.Blit(texture, tempBlurTex, BlurMaterial, 0); // Horizontal
+            Graphics.Blit(tempBlurTex, texture, BlurMaterial, 1); // Vertical
 
             RenderTexture.ReleaseTemporary(tempBlurTex);
-            RenderTexture.ReleaseTemporary(tempBlurTex2);
         }
 
         private void UpdateMaterialProperties()
@@ -229,18 +220,15 @@ namespace CensorEffect.Runtime
         {
             if (source == null || target == null) return;
 
-            target.transform.position = source.transform.position;
-            target.transform.rotation = source.transform.rotation;
-            target.fieldOfView = source.fieldOfView;
-            target.nearClipPlane = source.nearClipPlane;
-            target.farClipPlane = source.farClipPlane;
-            target.orthographic = source.orthographic;
-            target.orthographicSize = source.orthographicSize;
-            target.aspect = source.aspect;
+            // Copy all settings from the source camera. This is more robust than
+            // manually copying properties, as it includes settings like cullingMatrix.
+            target.CopyFrom(source);
 
+            // Override specific settings for the censor mask rendering
             target.cullingMask = CensorLayer;
             target.clearFlags = CameraClearFlags.SolidColor;
             target.backgroundColor = Color.clear;
+            target.useOcclusionCulling = false; // Occlusion is handled by the shader
         }
 
         private Material CreateMaterial(Shader shader)
