@@ -1,17 +1,17 @@
-﻿{
+{
   "name": "com.ineedmypills.censor-effect",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "displayName": "Censor Effect",
-  "description": "A versatile and performant camera effect to censor objects on a specific layer with a pixelated shader. Supports the Built-in Render Pipeline, with depth-based occlusion and a smooth expansion effect.",
+  "description": "A versatile and highly reliable camera effect to censor objects on a specific layer. Uses a modern CommandBuffer approach for robust occlusion and pixel-perfect non-AA edges. Supports the Built-in Render Pipeline.",
   "unity": "2019.4",
   "keywords": [
     "censor",
     "pixelated",
     "effect",
     "shader",
-    "post-processing"
+    "post-processing",
+    "command buffer"
   ],
-
   "author": {
     "name": "ineedmypills",
     "email": "egor.glukhikh06@gmail.com",
