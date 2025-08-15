@@ -91,6 +91,7 @@ namespace CensorEffect.Runtime.Builtin
             if (_censorEffect.CensorAreaExpansion > 0 && _blurMaterial != null)
             {
                 _blurMaterial.SetFloat("_BlurSize", _censorEffect.CensorAreaExpansion);
+
                 var tempBlurTex = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.R8);
 
                 Graphics.Blit(censorMaskTexture, tempBlurTex, _blurMaterial, 0); // Horizontal

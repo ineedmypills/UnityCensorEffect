@@ -36,6 +36,7 @@ namespace CensorEffect.Runtime
         public static readonly int CensorMaskID = Shader.PropertyToID("_CensorMask");
         public static readonly int ZTestID = Shader.PropertyToID("_ZTest");
 
+
         private void OnEnable()
         {
             InitializeMaterials();
