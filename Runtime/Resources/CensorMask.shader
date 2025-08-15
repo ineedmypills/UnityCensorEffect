@@ -7,7 +7,7 @@ Shader "Hidden/CensorMask"
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" "LightMode"="UniversalForward" }
+        Tags { "RenderType"="Opaque" }
         LOD 100
 
         Pass
