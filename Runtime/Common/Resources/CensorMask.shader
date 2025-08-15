@@ -12,50 +12,39 @@ Shader "Hidden/CensorMask"
 
         Pass
         {
-            // Render solid alpha to be used as a mask
             Blend One Zero
-            // Don't write to color buffer
-            ColorMask A
-            // Use existing depth buffer for occlusion
+            ColorMask R // Use Red channel, as we use R8 format
             ZTest [_ZTest]
-            // Write to depth buffer to allow censored objects to occlude each other
             ZWrite On
             Cull Off
 
-            HLSLPROGRAM
+            CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #pragma multi_compile_instancing
-
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-
+            #include "UnityCG.cginc"
             struct appdata
             {
                 float4 vertex : POSITION;
-                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct v2f
             {
                 float4 vertex : SV_POSITION;
-                UNITY_VERTEX_OUTPUT_STEREO
             };
 
             v2f vert (appdata v)
             {
                 v2f o;
-                UNITY_SETUP_INSTANCE_ID(v);
-                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
-                o.vertex = TransformObjectToHClip(v.vertex.xyz);
+                o.vertex = UnityObjectToClipPos(v.vertex);
                 return o;
             }
 
-            half4 frag (v2f i) : SV_Target
+            fixed4 frag (v2f i) : SV_Target
             {
-                // Output solid alpha
-                return half4(1,1,1,1);
+                // Output solid red
+                return fixed4(1,0,0,0);
             }
-            ENDHLSL
+            ENDCG
         }
     }
 }

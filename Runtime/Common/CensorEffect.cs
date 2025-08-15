@@ -100,7 +100,6 @@ namespace CensorEffect.Runtime
         {
             if (CensorEffectMaterial == null || camera == null) return;
 
-
             CensorEffectMaterial.SetFloat(PixelSizeID, PixelBlockCount);
             CensorEffectMaterial.SetFloat(CensorAreaExpansionID, CensorAreaExpansion); // This will be used by the blur shader
             CensorEffectMaterial.SetFloat(AntiAliasingID, EnableAntiAliasing ? 1f : 0f);
