@@ -182,6 +182,12 @@ namespace CensorEffect.Runtime
 
         private void CreateResources()
         {
+            // Find shaders if they are not assigned in the inspector.
+            if (_censorMaskShader == null) _censorMaskShader = Shader.Find("Hidden/CensorMask");
+            if (_censorEffectShader == null) _censorEffectShader = Shader.Find("Hidden/CensorEffect");
+            if (_dilationShader == null) _dilationShader = Shader.Find("Hidden/CensorDilation");
+
+            // Create materials from the shaders.
             _censorMaskMaterial = CreateMaterial(_censorMaskShader);
             _censorEffectMaterial = CreateMaterial(_censorEffectShader);
             _dilationMaterial = CreateMaterial(_dilationShader);
