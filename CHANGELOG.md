@@ -1,5 +1,14 @@
-﻿# Changelog
+# Changelog
 All notable changes to this package will be documented in this file.
+
+## [2.1.0] - 2025-08-15
+### Changed
+- **Complete Refactor to CommandBuffer:** The entire rendering logic has been rewritten to use a modern, reliable `CommandBuffer`. This replaces the old, error-prone `OnRenderImage` and secondary camera setup. This new architecture is more robust, performant, and correctly handles all stages of the effect.
+- When `EnableAntiAliasing` is disabled, the censorship border is now a sharp, pixel-perfect grid.
+
+### Fixed
+- **Occlusion is now 100% reliable.** By using a `CommandBuffer`, the effect now correctly and consistently performs depth tests against the main camera's depth buffer.
+- **Shader Auto-Finding:** The main script will now automatically find the required shaders if they are not assigned in the inspector, making setup easier.
 
 ## [2.0.1] - 2025-08-15
 ### Fixed
