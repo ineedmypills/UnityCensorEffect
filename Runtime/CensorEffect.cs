@@ -75,11 +75,6 @@ namespace CensorEffect.Runtime
 
         private void OnDisable()
         {
-            // It's good practice to clean up the depth texture mode flag if this component added it.
-            if (_mainCamera != null)
-            {
-                _mainCamera.depthTextureMode &= ~DepthTextureMode.Depth;
-            }
             CleanupResources();
         }
 
