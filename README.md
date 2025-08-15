@@ -1,9 +1,6 @@
 ﻿# Censor Effect for Unity
 
-A versatile and performant camera effect to censor objects on a specific layer with a pixelated shader. 
-
-> [!WARNING] 
-> Supports the **Built-in Render Pipeline** only!
+A versatile and performant camera effect to censor objects on a specific layer with a pixelated shader. Supports the **Built-in Render Pipeline**.
 
 ![Sample](https://github.com/user-attachments/assets/479ff24e-876b-4243-9fb5-2cf481f04a9c)
 
