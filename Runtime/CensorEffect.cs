@@ -75,15 +75,6 @@ namespace CensorEffect.Runtime
 
         private void OnDisable()
         {
-            // It's good practice to clean up the depth texture mode flag if this component added it.
-            if (_mainCamera != null)
-            {
-                // But don't remove it if motion vectors are enabled, as they also require it.
-                if (_mainCamera.motionVectorGenerationMode == MotionVectorGenerationMode.Off)
-                {
-                    _mainCamera.depthTextureMode &= ~DepthTextureMode.Depth;
-                }
-            }
             CleanupResources();
         }
 
