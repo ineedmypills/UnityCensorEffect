@@ -30,9 +30,9 @@ Shader "Hidden/CensorMask"
 
             #include "UnityCG.cginc"
 
-            // The main camera's depth texture, automatically provided by Unity
-            // when camera.depthTextureMode is set appropriately.
-            sampler2D _CameraDepthTexture;
+            // The main camera's depth texture, provided manually from the C# script
+            // to ensure it's available during the manual camera render.
+            sampler2D _CensorDepthTexture;
 
             // Input mesh data (vertex position).
             struct appdata
@@ -62,7 +62,7 @@ Shader "Hidden/CensorMask"
                 // This entire block is compiled out if _OCCLUSION_ON is not defined.
                 #if _OCCLUSION_ON
                     // Sample the main camera's depth texture at the fragment's screen position.
-                    float sceneDepth = SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture, UNITY_PROJ_COORD(i.screenPos));
+                    float sceneDepth = SAMPLE_DEPTH_TEXTURE_PROJ(_CensorDepthTexture, UNITY_PROJ_COORD(i.screenPos));
                     // The raw depth value is non-linear. Convert it to linear eye-space depth for a correct comparison.
                     float sceneLinearEyeDepth = LinearEyeDepth(sceneDepth);
                     // The current fragment's distance from the camera (w component of screenPos). Already linear.
