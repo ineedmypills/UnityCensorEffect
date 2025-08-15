@@ -50,7 +50,6 @@ namespace CensorEffect.Runtime
         // Shader Property IDs
         private static readonly int PixelSizeID = Shader.PropertyToID("_PixelSize");
         private static readonly int CensorMaskID = Shader.PropertyToID("_CensorMask");
-        private static readonly int ZTestID = Shader.PropertyToID("_ZTest");
         private static readonly int AntiAliasingID = Shader.PropertyToID("_AntiAliasing");
         private static readonly int BlurSizeID = Shader.PropertyToID("_BlurSize");
 
@@ -69,11 +68,16 @@ namespace CensorEffect.Runtime
         private void OnEnable()
         {
             _mainCamera = GetComponent<Camera>();
+            _mainCamera.depthTextureMode |= DepthTextureMode.Depth;
             LoadShaders();
         }
 
         private void OnDisable()
         {
+            if (_mainCamera != null)
+            {
+                _mainCamera.depthTextureMode &= ~DepthTextureMode.Depth;
+            }
             CleanupMaterials();
             CleanupCensorCamera();
         }
@@ -95,7 +99,8 @@ namespace CensorEffect.Runtime
             UpdateMaterialProperties();
 
             // The mask texture will be downsampled for the blur pass
-            var maskDescriptor = new RenderTextureDescriptor(source.width, source.height, RenderTextureFormat.R8, 0);
+            var maskDescriptor = new RenderTextureDescriptor(source.width, source.height, RenderTextureFormat.R8, 16);
+            maskDescriptor.msaaSamples = EnableAntiAliasing ? source.descriptor.msaaSamples : 1;
             var censorMaskTexture = RenderTexture.GetTemporary(maskDescriptor);
 
             RenderCensorMask(censorMaskTexture);
@@ -149,7 +154,15 @@ namespace CensorEffect.Runtime
         {
             CensorEffectMaterial.SetFloat(PixelSizeID, PixelBlockCount);
             CensorEffectMaterial.SetFloat(AntiAliasingID, EnableAntiAliasing ? 1f : 0f);
-            CensorMaskMaterial.SetInt(ZTestID, (int)(EnableOcclusion ? CompareFunction.LessEqual : CompareFunction.Always));
+
+            if (EnableOcclusion)
+            {
+                CensorMaskMaterial.EnableKeyword("_OCCLUSION_ON");
+            }
+            else
+            {
+                CensorMaskMaterial.DisableKeyword("_OCCLUSION_ON");
+            }
         }
 
         #endregion
@@ -193,6 +206,7 @@ namespace CensorEffect.Runtime
                 };
                 _censorCamera = go.GetComponent<Camera>();
                 _censorCamera.enabled = false;
+                _censorCamera.allowMSAA = true;
             }
             return _censorCamera;
         }
