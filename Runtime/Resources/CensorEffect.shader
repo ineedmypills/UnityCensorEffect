@@ -45,36 +45,31 @@ Shader "Hidden/CensorEffect"
 
             fixed4 frag (v2f i) : SV_Target
             {
-                // Get original color
+                // Get original screen color
                 fixed4 originalColor = tex2D(_MainTex, i.uv);
 
-                // Get pixelated color
+                // Calculate UV for pixelated color
                 float2 pixelGrid = float2(_PixelSize * _ScreenParams.x / _ScreenParams.y, _PixelSize);
                 float2 pixelatedUV = round(i.uv * pixelGrid) / pixelGrid;
                 fixed4 pixelatedColor = tex2D(_MainTex, pixelatedUV);
 
-                // Determine mask value based on AntiAliasing setting
-                fixed mask;
+                // Sample the pre-processed (resolved and dilated) mask
+                fixed mask = tex2D(_CensorMask, i.uv).r;
+
+                // Apply anti-aliasing if enabled
                 if (_AntiAliasing > 0.5)
                 {
-                    // Smooth mask sampling for soft edges
-                    mask = tex2D(_CensorMask, i.uv).r;
-                    mask = smoothstep(0.0, 1.0, mask);
+                    // Use smoothstep for soft edges. The 0.01 lower bound prevents
+                    // feathering from extending too far into the non-censored area.
+                    mask = smoothstep(0.01, 1.0, mask);
                 }
                 else
                 {
-                    // 4-corner sampling for a sharp, expanded blocky edge
-                    float2 pixelSize = 1.0 / pixelGrid;
-                    float2 uv00 = pixelatedUV - pixelSize * 0.5;
-                    float2 uv11 = pixelatedUV + pixelSize * 0.5;
-                    float s0 = tex2D(_CensorMask, uv00).r;
-                    float s1 = tex2D(_CensorMask, float2(uv11.x, uv00.y)).r;
-                    float s2 = tex2D(_CensorMask, float2(uv00.x, uv11.y)).r;
-                    float s3 = tex2D(_CensorMask, uv11).r;
-                    mask = max(max(s0, s1), max(s2, s3)) > 0.5 ? 1.0 : 0.0;
+                    // Use ceil for a sharp, blocky edge that perfectly matches the mask.
+                    mask = ceil(mask);
                 }
 
-                // Final color calculation
+                // Blend between original and pixelated color based on the final mask
                 return lerp(originalColor, pixelatedColor, mask);
             }
             ENDCG
