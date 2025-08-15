@@ -50,7 +50,6 @@ namespace CensorEffect.Runtime
         // Shader Property IDs
         private static readonly int PixelSizeID = Shader.PropertyToID("_PixelSize");
         private static readonly int CensorMaskID = Shader.PropertyToID("_CensorMask");
-        private static readonly int ZTestID = Shader.PropertyToID("_ZTest");
         private static readonly int AntiAliasingID = Shader.PropertyToID("_AntiAliasing");
         private static readonly int BlurSizeID = Shader.PropertyToID("_BlurSize");
 
@@ -69,11 +68,16 @@ namespace CensorEffect.Runtime
         private void OnEnable()
         {
             _mainCamera = GetComponent<Camera>();
+            _mainCamera.depthTextureMode |= DepthTextureMode.Depth;
             LoadShaders();
         }
 
         private void OnDisable()
         {
+            if (_mainCamera != null)
+            {
+                _mainCamera.depthTextureMode &= ~DepthTextureMode.Depth;
+            }
             CleanupMaterials();
             CleanupCensorCamera();
         }
@@ -94,17 +98,34 @@ namespace CensorEffect.Runtime
 
             UpdateMaterialProperties();
 
-            // The mask texture will be downsampled for the blur pass
-            var maskDescriptor = new RenderTextureDescriptor(source.width, source.height, RenderTextureFormat.R8, 0);
-            var censorMaskTexture = RenderTexture.GetTemporary(maskDescriptor);
+            // 1. Create the initial mask texture (potentially with MSAA)
+            var msaaMaskDescriptor = new RenderTextureDescriptor(source.width, source.height, RenderTextureFormat.R8, 16);
+            msaaMaskDescriptor.msaaSamples = EnableAntiAliasing ? source.descriptor.msaaSamples : 1;
+            var censorMaskMsaaTexture = RenderTexture.GetTemporary(msaaMaskDescriptor);
 
-            RenderCensorMask(censorMaskTexture);
-            ApplyBlur(censorMaskTexture);
+            // 2. Render the base mask
+            RenderCensorMask(censorMaskMsaaTexture);
 
-            CensorEffectMaterial.SetTexture(CensorMaskID, censorMaskTexture);
+            // 3. Create a resolved texture for blurring and final use
+            var resolvedMaskDescriptor = new RenderTextureDescriptor(source.width, source.height, RenderTextureFormat.R8, 0);
+            var resolvedMaskTexture = RenderTexture.GetTemporary(resolvedMaskDescriptor);
+
+            // 4. Blit to resolve MSAA
+            Graphics.Blit(censorMaskMsaaTexture, resolvedMaskTexture);
+            RenderTexture.ReleaseTemporary(censorMaskMsaaTexture);
+
+            // 5. Apply blur if needed
+            if (CensorAreaExpansion > 0)
+            {
+                ApplyBlur(resolvedMaskTexture);
+            }
+
+            // 6. Use the final mask in the effect shader
+            CensorEffectMaterial.SetTexture(CensorMaskID, resolvedMaskTexture);
             Graphics.Blit(source, destination, CensorEffectMaterial);
 
-            RenderTexture.ReleaseTemporary(censorMaskTexture);
+            // 7. Cleanup
+            RenderTexture.ReleaseTemporary(resolvedMaskTexture);
         }
 
         #endregion
@@ -122,8 +143,6 @@ namespace CensorEffect.Runtime
 
         private void ApplyBlur(RenderTexture texture)
         {
-            if (CensorAreaExpansion <= 0) return;
-
             // Downsample for performance
             var blurDescriptor = new RenderTextureDescriptor(texture.width / 4, texture.height / 4, RenderTextureFormat.R8, 0);
             var tempBlurTex = RenderTexture.GetTemporary(blurDescriptor);
@@ -149,7 +168,15 @@ namespace CensorEffect.Runtime
         {
             CensorEffectMaterial.SetFloat(PixelSizeID, PixelBlockCount);
             CensorEffectMaterial.SetFloat(AntiAliasingID, EnableAntiAliasing ? 1f : 0f);
-            CensorMaskMaterial.SetInt(ZTestID, (int)(EnableOcclusion ? CompareFunction.LessEqual : CompareFunction.Always));
+
+            if (EnableOcclusion)
+            {
+                CensorMaskMaterial.EnableKeyword("_OCCLUSION_ON");
+            }
+            else
+            {
+                CensorMaskMaterial.DisableKeyword("_OCCLUSION_ON");
+            }
         }
 
         #endregion
@@ -193,6 +220,7 @@ namespace CensorEffect.Runtime
                 };
                 _censorCamera = go.GetComponent<Camera>();
                 _censorCamera.enabled = false;
+                _censorCamera.allowMSAA = true;
             }
             return _censorCamera;
         }
