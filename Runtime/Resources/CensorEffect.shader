@@ -63,8 +63,15 @@ Shader "Hidden/CensorEffect"
                 }
                 else
                 {
-                    // Pixel-perfect mask sampling for sharp edges
-                    mask = tex2D(_CensorMask, pixelatedUV).r > 0.5 ? 1.0 : 0.0;
+                    // 4-corner sampling for a sharp, expanded blocky edge
+                    float2 pixelSize = 1.0 / pixelGrid;
+                    float2 uv00 = pixelatedUV - pixelSize * 0.5;
+                    float2 uv11 = pixelatedUV + pixelSize * 0.5;
+                    float s0 = tex2D(_CensorMask, uv00).r;
+                    float s1 = tex2D(_CensorMask, float2(uv11.x, uv00.y)).r;
+                    float s2 = tex2D(_CensorMask, float2(uv00.x, uv11.y)).r;
+                    float s3 = tex2D(_CensorMask, uv11).r;
+                    mask = max(max(s0, s1), max(s2, s3)) > 0.5 ? 1.0 : 0.0;
                 }
 
                 // Final color calculation

@@ -98,18 +98,34 @@ namespace CensorEffect.Runtime
 
             UpdateMaterialProperties();
 
-            // The mask texture will be downsampled for the blur pass
-            var maskDescriptor = new RenderTextureDescriptor(source.width, source.height, RenderTextureFormat.R8, 16);
-            maskDescriptor.msaaSamples = EnableAntiAliasing ? source.descriptor.msaaSamples : 1;
-            var censorMaskTexture = RenderTexture.GetTemporary(maskDescriptor);
+            // 1. Create the initial mask texture (potentially with MSAA)
+            var msaaMaskDescriptor = new RenderTextureDescriptor(source.width, source.height, RenderTextureFormat.R8, 16);
+            msaaMaskDescriptor.msaaSamples = EnableAntiAliasing ? source.descriptor.msaaSamples : 1;
+            var censorMaskMsaaTexture = RenderTexture.GetTemporary(msaaMaskDescriptor);
 
-            RenderCensorMask(censorMaskTexture);
-            ApplyBlur(censorMaskTexture);
+            // 2. Render the base mask
+            RenderCensorMask(censorMaskMsaaTexture);
 
-            CensorEffectMaterial.SetTexture(CensorMaskID, censorMaskTexture);
+            // 3. Create a resolved texture for blurring and final use
+            var resolvedMaskDescriptor = new RenderTextureDescriptor(source.width, source.height, RenderTextureFormat.R8, 0);
+            var resolvedMaskTexture = RenderTexture.GetTemporary(resolvedMaskDescriptor);
+
+            // 4. Blit to resolve MSAA
+            Graphics.Blit(censorMaskMsaaTexture, resolvedMaskTexture);
+            RenderTexture.ReleaseTemporary(censorMaskMsaaTexture);
+
+            // 5. Apply blur if needed
+            if (CensorAreaExpansion > 0)
+            {
+                ApplyBlur(resolvedMaskTexture);
+            }
+
+            // 6. Use the final mask in the effect shader
+            CensorEffectMaterial.SetTexture(CensorMaskID, resolvedMaskTexture);
             Graphics.Blit(source, destination, CensorEffectMaterial);
 
-            RenderTexture.ReleaseTemporary(censorMaskTexture);
+            // 7. Cleanup
+            RenderTexture.ReleaseTemporary(resolvedMaskTexture);
         }
 
         #endregion
@@ -127,8 +143,6 @@ namespace CensorEffect.Runtime
 
         private void ApplyBlur(RenderTexture texture)
         {
-            if (CensorAreaExpansion <= 0) return;
-
             // Downsample for performance
             var blurDescriptor = new RenderTextureDescriptor(texture.width / 4, texture.height / 4, RenderTextureFormat.R8, 0);
             var tempBlurTex = RenderTexture.GetTemporary(blurDescriptor);
