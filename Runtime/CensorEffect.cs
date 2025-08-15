@@ -88,7 +88,7 @@ namespace CensorEffect.Runtime
             // Explicitly set the main camera's depth texture as a global shader
             // variable. This is more reliable than relying on Unity to automatically
             // bind _CameraDepthTexture during a manual RenderWithShader call.
-            Graphics.SetGlobalTexture("_CensorDepthTexture", BuiltinRenderTextureType.Depth);
+            Shader.SetGlobalTexture("_CensorDepthTexture", BuiltinRenderTextureType.Depth);
             RenderCensorMask(censorMask);
 
             RenderTexture processedMask;
