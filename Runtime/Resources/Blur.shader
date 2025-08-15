@@ -7,10 +7,9 @@ Shader "Hidden/CensorBlur"
     }
     SubShader
     {
-        // No culling or depth
         Cull Off ZWrite Off ZTest Always
 
-        // Pass 1: Horizontal Blur
+        // Pass 0: Horizontal Gaussian Blur
         Pass
         {
             CGPROGRAM
@@ -34,7 +33,7 @@ Shader "Hidden/CensorBlur"
             float4 _MainTex_TexelSize;
             float _BlurSize;
 
-            v2f vert (appdata v)
+            v2f vert(appdata v)
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
@@ -42,23 +41,30 @@ Shader "Hidden/CensorBlur"
                 return o;
             }
 
-            fixed4 frag (v2f i) : SV_Target
+            fixed4 frag(v2f i) : SV_Target
             {
-                float4 col = 0;
-                int radius = (int)_BlurSize;
-                int sampleCount = 0;
+                float2 texelSize = _MainTex_TexelSize.xy * _BlurSize;
+                fixed4 col = 0;
 
-                for (int x = -radius; x <= radius; x++)
+                // 9-tap Gaussian kernel weights
+                float weights[5] = { 0.227027, 0.1945946, 0.1216216, 0.05405405, 0.01621622 };
+
+                // Center sample
+                col += tex2D(_MainTex, i.uv) * weights[0];
+
+                // Symmetric samples
+                for (int j = 1; j < 5; j++)
                 {
-                    col += tex2D(_MainTex, i.uv + float2(x * _MainTex_TexelSize.x, 0));
-                    sampleCount++;
+                    col += tex2D(_MainTex, i.uv + float2(texelSize.x * j, 0)) * weights[j];
+                    col += tex2D(_MainTex, i.uv - float2(texelSize.x * j, 0)) * weights[j];
                 }
-                return col / sampleCount;
+
+                return col;
             }
             ENDCG
         }
 
-        // Pass 2: Vertical Blur
+        // Pass 1: Vertical Gaussian Blur
         Pass
         {
             CGPROGRAM
@@ -82,7 +88,7 @@ Shader "Hidden/CensorBlur"
             float4 _MainTex_TexelSize;
             float _BlurSize;
 
-            v2f vert (appdata v)
+            v2f vert(appdata v)
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
@@ -90,20 +96,28 @@ Shader "Hidden/CensorBlur"
                 return o;
             }
 
-            fixed4 frag (v2f i) : SV_Target
+            fixed4 frag(v2f i) : SV_Target
             {
-                float4 col = 0;
-                int radius = (int)_BlurSize;
-                int sampleCount = 0;
+                float2 texelSize = _MainTex_TexelSize.xy * _BlurSize;
+                fixed4 col = 0;
 
-                for (int y = -radius; y <= radius; y++)
+                // 9-tap Gaussian kernel weights
+                float weights[5] = { 0.227027, 0.1945946, 0.1216216, 0.05405405, 0.01621622 };
+
+                // Center sample
+                col += tex2D(_MainTex, i.uv) * weights[0];
+
+                // Symmetric samples
+                for (int j = 1; j < 5; j++)
                 {
-                    col += tex2D(_MainTex, i.uv + float2(0, y * _MainTex_TexelSize.y));
-                    sampleCount++;
+                    col += tex2D(_MainTex, i.uv + float2(0, texelSize.y * j)) * weights[j];
+                    col += tex2D(_MainTex, i.uv - float2(0, texelSize.y * j)) * weights[j];
                 }
-                return col / sampleCount;
+
+                return col;
             }
             ENDCG
         }
     }
+    Fallback Off
 }
