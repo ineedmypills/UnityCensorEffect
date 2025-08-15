@@ -1,15 +1,20 @@
+// This shader performs a two-pass separable dilation on a texture.
+// Dilation is a morphological operation that expands bright areas of an image.
+// It's used here to expand the censor mask, making the censored area larger.
 Shader "Hidden/CensorDilation"
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
-        _DilationSize ("Dilation Size", Float) = 1.0
+        [HideInInspector] _MainTex ("Texture", 2D) = "white" {}
+        [HideInInspector] _DilationSize ("Dilation Size", Int) = 1
     }
     SubShader
     {
+        // Standard post-processing setup.
         Cull Off ZWrite Off ZTest Always
 
-        // Pass 0: Horizontal Dilation
+        // --- Pass 0: Horizontal Dilation ---
+        // This pass finds the maximum pixel value in a horizontal line.
         Pass
         {
             CGPROGRAM
@@ -30,8 +35,8 @@ Shader "Hidden/CensorDilation"
             };
 
             sampler2D _MainTex;
-            float4 _MainTex_TexelSize;
-            float _DilationSize;
+            float4 _MainTex_TexelSize; // Unity provides texel size (1/width, 1/height)
+            int _DilationSize;         // The radius of dilation in pixels, from C# script.
 
             v2f vert(appdata v)
             {
@@ -43,22 +48,31 @@ Shader "Hidden/CensorDilation"
 
             fixed4 frag(v2f i) : SV_Target
             {
-                float2 texelSize = _MainTex_TexelSize.xy * _DilationSize;
+                // Start with the darkest possible value.
                 fixed maxVal = 0;
 
-                // 9-tap kernel
-                for (int j = -4; j <= 4; j++)
+                // Loop from -radius to +radius to sample a horizontal kernel.
+                // The total number of samples is (2 * _DilationSize + 1).
+                for (int j = -_DilationSize; j <= _DilationSize; j++)
                 {
-                    float sample = tex2D(_MainTex, i.uv + float2(texelSize.x * j, 0)).r;
+                    // Calculate the UV offset for the current sample.
+                    float2 offset = float2(_MainTex_TexelSize.x * j, 0);
+                    // Sample the texture and get its red channel value.
+                    float sample = tex2D(_MainTex, i.uv + offset).r;
+                    // Keep track of the maximum value found.
                     maxVal = max(maxVal, sample);
                 }
 
+                // Output the maximum value found. This pixel now represents the brightest
+                // value in its horizontal neighborhood.
                 return fixed4(maxVal, maxVal, maxVal, 1);
             }
             ENDCG
         }
 
-        // Pass 1: Vertical Dilation
+        // --- Pass 1: Vertical Dilation ---
+        // This pass takes the result from the horizontal pass and finds the
+        // maximum pixel value in a vertical line.
         Pass
         {
             CGPROGRAM
@@ -80,7 +94,7 @@ Shader "Hidden/CensorDilation"
 
             sampler2D _MainTex;
             float4 _MainTex_TexelSize;
-            float _DilationSize;
+            int _DilationSize;
 
             v2f vert(appdata v)
             {
@@ -92,16 +106,18 @@ Shader "Hidden/CensorDilation"
 
             fixed4 frag(v2f i) : SV_Target
             {
-                float2 texelSize = _MainTex_TexelSize.xy * _DilationSize;
                 fixed maxVal = 0;
 
-                // 9-tap kernel
-                for (int j = -4; j <= 4; j++)
+                // Loop from -radius to +radius to sample a vertical kernel.
+                for (int j = -_DilationSize; j <= _DilationSize; j++)
                 {
-                     float sample = tex2D(_MainTex, i.uv + float2(0, texelSize.y * j)).r;
-                     maxVal = max(maxVal, sample);
+                    float2 offset = float2(0, _MainTex_TexelSize.y * j);
+                    float sample = tex2D(_MainTex, i.uv + offset).r;
+                    maxVal = max(maxVal, sample);
                 }
 
+                // The final result is the maximum value in a 2D square neighborhood,
+                // effectively dilating the bright areas of the original texture.
                 return fixed4(maxVal, maxVal, maxVal, 1);
             }
             ENDCG
