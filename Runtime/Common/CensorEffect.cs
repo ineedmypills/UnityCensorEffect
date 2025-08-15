@@ -112,13 +112,11 @@ namespace CensorEffect.Runtime
 
         private void Awake()
         {
-            if (UnityEngine.Rendering.GraphicsSettings.renderPipelineAsset == null)
+            // This effect only supports the Built-in Render Pipeline.
+            // Ensure the CensorEffectBuiltin component is always present.
+            if (GetComponent<CensorEffectBuiltin>() == null)
             {
-                // We are in the Built-in Render Pipeline
-                if (GetComponent<CensorEffectBuiltin>() == null)
-                {
-                    gameObject.AddComponent<CensorEffectBuiltin>();
-                }
+                gameObject.AddComponent<CensorEffectBuiltin>();
             }
         }
 
