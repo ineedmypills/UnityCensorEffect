@@ -66,25 +66,25 @@ Shader "Hidden/CensorEffect"
                 // 3. Sample the original texture at the snapped UV to get a blocky, pixelated color.
                 fixed4 pixelatedColor = tex2D(_MainTex, pixelatedUV);
 
-                // Sample the pre-processed (MSAA-resolved and dilated) censor mask.
-                // We only need the red channel since it's an R8 texture.
-                fixed mask = tex2D(_CensorMask, i.uv).r;
-
-                // Process the mask edge based on the anti-aliasing setting.
+                // Sample the censor mask. The method depends on the anti-aliasing setting.
+                fixed mask;
                 if (_AntiAliasing > 0.5)
                 {
-                    // Soft edges: Use smoothstep to create a soft, anti-aliased transition
+                    // For soft edges, sample the mask at the fragment's native UV.
+                    // Then, use smoothstep to create a soft, anti-aliased transition
                     // between the non-censored (0) and censored (1) areas.
                     // The 0.01 lower bound prevents feathering from extending too far
                     // into the non-censored area, keeping the edge crisp.
+                    mask = tex2D(_CensorMask, i.uv).r;
                     mask = smoothstep(0.01, 1.0, mask);
                 }
                 else
                 {
-                    // Hard edges: Use ceil to create a sharp, blocky edge that perfectly
-                    // aligns with the pixel grid of the mask. This is useful for a more
-                    // retro, aliased look.
-                    mask = ceil(mask);
+                    // For hard, pixel-perfect edges, sample the mask using the same
+                    // pixelated UV coordinates used for the color. This ensures the
+                    // mask's boundary aligns perfectly with the pixel blocks,
+                    // creating a clean, retro look without harsh, sub-pixel aliasing.
+                    mask = tex2D(_CensorMask, pixelatedUV).r;
                 }
 
                 // Linearly interpolate between the original and pixelated colors
