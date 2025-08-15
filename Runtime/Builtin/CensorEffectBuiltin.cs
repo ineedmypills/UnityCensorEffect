@@ -76,7 +76,7 @@ namespace CensorEffect.Runtime.Builtin
             _censorEffect.UpdateMaterialProperties(_mainCamera);
 
             // Get a temporary texture for the mask
-            var censorMaskTexture = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.A8);
+            var censorMaskTexture = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.R8);
 
             // Setup and render the mask
             var censorCam = GetCensorCamera();
@@ -91,7 +91,8 @@ namespace CensorEffect.Runtime.Builtin
             if (_censorEffect.CensorAreaExpansion > 0 && _blurMaterial != null)
             {
                 _blurMaterial.SetFloat("_BlurSize", _censorEffect.CensorAreaExpansion);
-                var tempBlurTex = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.A8);
+
+                var tempBlurTex = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.R8);
 
                 Graphics.Blit(censorMaskTexture, tempBlurTex, _blurMaterial, 0); // Horizontal
                 Graphics.Blit(tempBlurTex, censorMaskTexture, _blurMaterial, 1); // Vertical

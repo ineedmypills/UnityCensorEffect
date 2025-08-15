@@ -30,11 +30,12 @@ namespace CensorEffect.Runtime
         [HideInInspector] public Material CensorEffectMaterial;
 
         // Shader property IDs
-        internal static readonly int PixelSizeID = Shader.PropertyToID("_PixelSize");
-        internal static readonly int CensorAreaExpansionID = Shader.PropertyToID("_CensorAreaExpansion");
-        internal static readonly int AntiAliasingID = Shader.PropertyToID("_AntiAliasing");
-        internal static readonly int CensorMaskID = Shader.PropertyToID("_CensorMask");
-        internal static readonly int ZTestID = Shader.PropertyToID("_ZTest");
+        public static readonly int PixelSizeID = Shader.PropertyToID("_PixelSize");
+        public static readonly int CensorAreaExpansionID = Shader.PropertyToID("_CensorAreaExpansion");
+        public static readonly int AntiAliasingID = Shader.PropertyToID("_AntiAliasing");
+        public static readonly int CensorMaskID = Shader.PropertyToID("_CensorMask");
+        public static readonly int ZTestID = Shader.PropertyToID("_ZTest");
+
 
         private void OnEnable()
         {

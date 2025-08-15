@@ -53,7 +53,8 @@ Shader "Hidden/CensorEffect"
                 fixed4 originalColor = tex2D(_MainTex, i.uv);
 
                 // Sample mask from the pixelated UV to ensure mask aligns with pixels
-                fixed mask = tex2D(_CensorMask, pixelatedUV).a;
+
+                fixed mask = tex2D(_CensorMask, pixelatedUV).r;
 
                 if (mask > 0.01)
                 {
@@ -63,7 +64,8 @@ Shader "Hidden/CensorEffect"
                     if (_AntiAliasing > 0.5)
                     {
                         // Use the original (non-pixelated) mask sample for a smoother edge
-                        fixed smoothMask = tex2D(_CensorMask, i.uv).a;
+                        fixed smoothMask = tex2D(_CensorMask, i.uv).r;
+
                         return lerp(originalColor, pixelatedColor, smoothstep(0.0, 1.0, smoothMask));
                     }
                     return pixelatedColor;

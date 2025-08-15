@@ -54,7 +54,9 @@ namespace CensorEffect.Runtime.URP
 
         public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
         {
-            cmd.GetTemporaryRT(_censorMaskTexture.id, cameraTextureDescriptor.width, cameraTextureDescriptor.height, 0, FilterMode.Bilinear, RenderTextureFormat.A8);
+            cameraTextureDescriptor.colorFormat = RenderTextureFormat.R8;
+            cmd.GetTemporaryRT(_censorMaskTexture.id, cameraTextureDescriptor, FilterMode.Bilinear);
+
             ConfigureTarget(_censorMaskTexture.Identifier());
             ConfigureClear(ClearFlag.All, Color.clear);
         }
@@ -83,7 +85,8 @@ namespace CensorEffect.Runtime.URP
                 _blurMaterial.SetFloat("_BlurSize", _censorEffect.CensorAreaExpansion);
                 int tempBlurTexId = Shader.PropertyToID("_TempBlurTexture");
                 var desc = renderingData.cameraData.cameraTargetDescriptor;
-                desc.colorFormat = RenderTextureFormat.A8;
+                desc.colorFormat = RenderTextureFormat.R8;
+
                 cmd.GetTemporaryRT(tempBlurTexId, desc, FilterMode.Bilinear);
 
                 // Horizontal blur
