@@ -30,8 +30,8 @@ Shader "Hidden/CensorMask"
             };
 
             #if OCCLUSION_ON
-            // The camera's depth texture, provided by Unity when enabled on the camera.
-            sampler2D_float _CameraDepthTexture;
+            // Our manually-copied depth texture.
+            sampler2D_float _ManualDepthTexture;
             #endif
 
             v2f vert(appdata v)
@@ -50,7 +50,7 @@ Shader "Hidden/CensorMask"
             {
                 #if OCCLUSION_ON
                 // Read the depth from the scene's depth buffer
-                float sceneZ = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture, UNITY_PROJ_COORD(i.screenPos)));
+                float sceneZ = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_ManualDepthTexture, UNITY_PROJ_COORD(i.screenPos)));
                 // The current pixel's depth
                 float pixelZ = i.screenPos.w;
 

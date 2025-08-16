@@ -43,6 +43,9 @@ namespace CensorEffect.Runtime
 
         // Main Camera
         private Camera _mainCamera;
+
+        // Command Buffer for robust depth texture access
+        private CommandBuffer _depthCopyCommandBuffer;
         #endregion
 
         #region Unity Methods
@@ -52,11 +55,25 @@ namespace CensorEffect.Runtime
             _mainCamera = GetComponent<Camera>();
 
             CreateResources();
+
+            // This command buffer guarantees that we have a stable reference to the depth texture
+            // under a name we control ("_ManualDepthTexture"), bypassing any potential issues with
+            // RenderWithShader not receiving the default _CameraDepthTexture global.
+            _depthCopyCommandBuffer = new CommandBuffer { name = "Censor Depth Copy" };
+            _depthCopyCommandBuffer.SetGlobalTexture("_ManualDepthTexture", BuiltinRenderTextureType.Depth);
+            _mainCamera.AddCommandBuffer(CameraEvent.AfterDepthTexture, _depthCopyCommandBuffer);
         }
 
         private void OnDisable()
         {
             CleanupResources();
+
+            if (_depthCopyCommandBuffer != null)
+            {
+                _mainCamera.RemoveCommandBuffer(CameraEvent.AfterDepthTexture, _depthCopyCommandBuffer);
+                _depthCopyCommandBuffer.Release();
+                _depthCopyCommandBuffer = null;
+            }
         }
 
         private void OnRenderImage(RenderTexture source, RenderTexture destination)
