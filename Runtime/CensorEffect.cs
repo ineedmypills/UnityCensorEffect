@@ -149,7 +149,12 @@ namespace CensorEffect.Runtime
                 _censorCamera.enabled = false; // The camera is manually rendered, not enabled.
             }
 
-            // Match the censor camera's settings to the main camera
+            // Match the censor camera's transform and settings to the main camera.
+            // This is the critical fix for occlusion, ensuring the censor camera
+            // renders from the same viewpoint as the main camera.
+            _censorCamera.transform.position = _mainCamera.transform.position;
+            _censorCamera.transform.rotation = _mainCamera.transform.rotation;
+
             _censorCamera.CopyFrom(_mainCamera);
 
             // Override settings for mask rendering
