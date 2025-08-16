@@ -51,15 +51,19 @@ namespace CensorEffect.Runtime
 
         private void OnDisable()
         {
+            CleanupCommandBuffer();
             CleanupResources();
         }
 
+        // This method is now empty because all rendering is handled by the CommandBuffer.
+        // We keep the method to ensure the effect can be disabled by disabling the component.
         private void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
             if (!AreResourcesCreated()) {
                 Graphics.Blit(source, destination);
                 return;
             }
+        }
 
             // Find renderers every frame in the editor to catch newly added objects.
             if (Application.isEditor) {
@@ -101,6 +105,7 @@ namespace CensorEffect.Runtime
             // Set the scene's depth texture as a global variable for the shader to sample.
             cmd.SetGlobalTexture("_SceneDepthTexture", new RenderTargetIdentifier(BuiltinRenderTextureType.Depth));
 
+
             // Draw the renderers into our mask texture.
             cmd.SetRenderTarget(destination);
             cmd.ClearRenderTarget(true, true, Color.clear);
@@ -118,7 +123,7 @@ namespace CensorEffect.Runtime
             cmd.Release();
         }
 
-        private void ApplyDilation(RenderTexture source, RenderTexture destination)
+        private bool PropertiesChanged()
         {
             _dilationMaterial.SetInt("_DilationSize", CensorAreaExpansionPixels);
             var tempRT = RenderTexture.GetTemporary(source.width, source.height, 0, source.format);
