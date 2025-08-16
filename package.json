@@ -1,8 +1,8 @@
 {
   "name": "com.ineedmypills.censor-effect",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "displayName": "Censor Effect",
-  "description": "A versatile and highly reliable camera effect to censor objects on a specific layer. Uses a modern CommandBuffer approach for robust occlusion and pixel-perfect non-AA edges. Supports the Built-in Render Pipeline.",
+  "description": "A robust and easy-to-use camera effect for censoring objects on specific layers. Uses a modern CommandBuffer pipeline for reliable occlusion and pixel-perfect rendering. For the Built-in Render Pipeline.",
   "unity": "2019.4",
   "keywords": [
     "censor",
@@ -10,7 +10,8 @@
     "effect",
     "shader",
     "post-processing",
-    "command buffer"
+    "command buffer",
+    "built-in"
   ],
   "author": {
     "name": "ineedmypills",

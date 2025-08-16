@@ -57,12 +57,25 @@ namespace CensorEffect.Runtime
         private static readonly int AntiAliasingID = Shader.PropertyToID("_AntiAliasing");
         private static readonly int DilationSizeID = Shader.PropertyToID("_DilationSize");
 
+        // Private state for tracking changes
+        private LayerMask _previousCensorLayer;
+        private bool _previousEnableOcclusion;
+        private float _previousPixelBlockCount;
+        private int _previousCensorAreaExpansionPixels;
+        private bool _previousEnableAntiAliasing;
+
         #endregion
 
         #region Unity Methods
 
         private void OnEnable()
         {
+            if (!SystemInfo.supportsImageEffects)
+            {
+                enabled = false;
+                return;
+            }
+
             _mainCamera = GetComponent<Camera>();
             _mainCamera.depthTextureMode |= DepthTextureMode.Depth;
 
@@ -75,6 +88,7 @@ namespace CensorEffect.Runtime
             {
                 FindAndCacheRenderers();
                 SetupCommandBuffer();
+                UpdatePreviousProperties();
             }
         }
 
@@ -91,6 +105,17 @@ namespace CensorEffect.Runtime
             // If we are here, the command buffer is not active or has been removed.
             // Just blit the source to ensure the screen is not black.
             Graphics.Blit(source, destination);
+        }
+
+        private void Update()
+        {
+            // In the editor, if the user changes a property, we need to rebuild the command buffer.
+            if (Application.isEditor && PropertiesChanged())
+            {
+                FindAndCacheRenderers();
+                SetupCommandBuffer();
+                UpdatePreviousProperties();
+            }
         }
 
         #endregion
@@ -119,12 +144,14 @@ namespace CensorEffect.Runtime
 
             _commandBuffer = new CommandBuffer { name = "Censor Effect" };
 
-            // Ensure material properties (like shader keywords) are up to date.
+            // Ensure material properties (like shader keywords) are up to date before building the buffer.
             UpdateMaterialProperties();
 
-            // Part 1: Generate the Censor Mask
+            // --- Part 1: Generate the Censor Mask ---
+            // Create a temporary render texture for the mask (R8 format for single channel, 16-bit depth for occlusion).
             var maskDescriptor = new RenderTextureDescriptor(_mainCamera.pixelWidth, _mainCamera.pixelHeight, RenderTextureFormat.R8, 16);
             _commandBuffer.GetTemporaryRT(_censorMaskID, maskDescriptor, FilterMode.Bilinear);
+            // Draw all the renderers on the specified CensorLayer into the mask texture.
             _commandBuffer.SetRenderTarget(_censorMaskID);
             _commandBuffer.ClearRenderTarget(true, true, Color.clear);
             foreach (var renderer in _renderersToCensor)
@@ -135,34 +162,60 @@ namespace CensorEffect.Runtime
                 }
             }
 
-            // Part 2: Dilate the mask if required
+            // --- Part 2: Dilate the mask if required ---
             if (CensorAreaExpansionPixels > 0)
             {
+                // Create a second temporary render texture for the two-pass dilation.
                 int dilatedMaskID = Shader.PropertyToID("_DilatedCensorMaskTemp");
                 var dilatedMaskDescriptor = new RenderTextureDescriptor(_mainCamera.pixelWidth, _mainCamera.pixelHeight, RenderTextureFormat.R8, 0);
                 _commandBuffer.GetTemporaryRT(dilatedMaskID, dilatedMaskDescriptor, FilterMode.Bilinear);
 
-                _commandBuffer.Blit(_censorMaskID, dilatedMaskID, _dilationMaterial, 0); // Horizontal
-                _commandBuffer.Blit(dilatedMaskID, _censorMaskID, _dilationMaterial, 1); // Vertical
+                // Pass 1: Horizontal dilation
+                _commandBuffer.Blit(_censorMaskID, dilatedMaskID, _dilationMaterial, 0);
+                // Pass 2: Vertical dilation (result goes back into original mask texture)
+                _commandBuffer.Blit(dilatedMaskID, _censorMaskID, _dilationMaterial, 1);
+
+                // We are done with the intermediate texture.
                 _commandBuffer.ReleaseTemporaryRT(dilatedMaskID);
             }
 
-            // Part 3: Apply the final pixelation effect
+            // --- Part 3: Apply the final pixelation effect ---
+            // Set the final mask (either original or dilated) as a global texture for the effect shader to use.
             _commandBuffer.SetGlobalTexture(CensorMaskGlobalID, _censorMaskID);
 
-            // To apply the effect, we need to copy the screen content to a temporary
-            // texture, apply the effect from that texture back to the screen.
-            // Reading from and writing to the same texture in one Blit is not safe.
+            // To apply a full-screen effect safely, we must copy the screen content to a temporary
+            // texture (`_ScreenCopy`) and then blit from that copy back to the screen.
+            // Reading from and writing to the same `CameraTarget` in one command is not reliable.
             int screenCopyID = Shader.PropertyToID("_ScreenCopy");
             _commandBuffer.GetTemporaryRT(screenCopyID, _mainCamera.pixelWidth, _mainCamera.pixelHeight, 0, FilterMode.Bilinear, RenderTextureFormat.Default);
             _commandBuffer.Blit(BuiltinRenderTextureType.CameraTarget, screenCopyID);
             _commandBuffer.Blit(screenCopyID, BuiltinRenderTextureType.CameraTarget, _censorEffectMaterial);
 
-            // Part 4: Cleanup
+            // --- Part 4: Cleanup ---
+            // Release all temporary textures used in this command buffer.
             _commandBuffer.ReleaseTemporaryRT(_censorMaskID);
             _commandBuffer.ReleaseTemporaryRT(screenCopyID);
 
+            // Add the fully populated command buffer to the camera.
             _mainCamera.AddCommandBuffer(CameraEvent.BeforeImageEffects, _commandBuffer);
+        }
+
+        private bool PropertiesChanged()
+        {
+            return _previousCensorLayer != CensorLayer ||
+                   _previousEnableOcclusion != EnableOcclusion ||
+                   !Mathf.Approximately(_previousPixelBlockCount, PixelBlockCount) ||
+                   _previousCensorAreaExpansionPixels != CensorAreaExpansionPixels ||
+                   _previousEnableAntiAliasing != EnableAntiAliasing;
+        }
+
+        private void UpdatePreviousProperties()
+        {
+            _previousCensorLayer = CensorLayer;
+            _previousEnableOcclusion = EnableOcclusion;
+            _previousPixelBlockCount = PixelBlockCount;
+            _previousCensorAreaExpansionPixels = CensorAreaExpansionPixels;
+            _previousEnableAntiAliasing = EnableAntiAliasing;
         }
 
 
@@ -219,7 +272,11 @@ namespace CensorEffect.Runtime
         {
             if (_commandBuffer != null)
             {
-                _mainCamera.RemoveCommandBuffer(CameraEvent.BeforeImageEffects, _commandBuffer);
+                // Check if camera exists, as it might have been destroyed.
+                if (_mainCamera != null)
+                {
+                    _mainCamera.RemoveCommandBuffer(CameraEvent.BeforeImageEffects, _commandBuffer);
+                }
                 _commandBuffer.Release();
                 _commandBuffer = null;
             }
