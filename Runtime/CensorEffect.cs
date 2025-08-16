@@ -68,7 +68,8 @@ namespace CensorEffect.Runtime
             }
 
             // --- Step 1: Create Censor Mask ---
-            var maskDescriptor = new RenderTextureDescriptor(source.width, source.height, RenderTextureFormat.R8, 0);
+            // The mask texture needs a depth buffer for occlusion testing to work correctly.
+            var maskDescriptor = new RenderTextureDescriptor(source.width, source.height, RenderTextureFormat.R8, 24);
             RenderTexture censorMask = RenderTexture.GetTemporary(maskDescriptor);
             RenderCensorMask(censorMask);
 
