@@ -103,7 +103,8 @@ namespace CensorEffect.Runtime
             var cmd = new CommandBuffer { name = "Censor Mask Generation" };
 
             // Set the scene's depth texture as a global variable for the shader to sample.
-            cmd.SetGlobalTexture("_SceneDepthTexture", BuiltinRenderTextureType.Depth);
+            cmd.SetGlobalTexture("_SceneDepthTexture", new RenderTargetIdentifier(BuiltinRenderTextureType.Depth));
+
 
             // Draw the renderers into our mask texture.
             cmd.SetRenderTarget(destination);
