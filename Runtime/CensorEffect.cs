@@ -51,13 +51,6 @@ namespace CensorEffect.Runtime
         {
             _mainCamera = GetComponent<Camera>();
 
-            if (!SystemInfo.supportsImageEffects)
-            {
-                Debug.LogWarning("CensorEffect is not supported on this platform.");
-                enabled = false;
-                return;
-            }
-
             CreateResources();
         }
 
@@ -120,7 +113,8 @@ namespace CensorEffect.Runtime
             }
             else
             {
-                _mainCamera.depthTextureMode &= ~DepthTextureMode.Depth;
+                // We don't disable depth texture mode here because other effects might be using it.
+                // This prevents conflicts and log spam if another system (e.g., motion vectors) needs depth.
                 _censorMaskMaterial.DisableKeyword("OCCLUSION_ON");
             }
 
