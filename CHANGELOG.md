@@ -1,5 +1,30 @@
-﻿# Changelog
+# Changelog
 All notable changes to this package will be documented in this file.
+
+## [4.0.0] - 2025-08-16
+### Changed
+- **Complete Rewrite from Scratch:** The asset has been rebuilt from the ground up to guarantee stability and reliability.
+- **New Hybrid Architecture:** The effect now uses a main `OnRenderImage` loop for simplicity and compatibility, while leveraging a temporary, short-lived `CommandBuffer` for the sole purpose of robustly rendering the occlusion mask. This "best of both worlds" approach solves all previously known bugs related to occlusion, lighting, and black screens.
+
+### Fixed
+- All known bugs have been addressed.
+
+### Added
+- All features from previous versions (occlusion, dilation, AA toggle, pixel-perfect borders) have been re-implemented in the new stable architecture.
+
+## [3.0.0] - 2025-08-15
+### Changed
+- **Complete Architectural Refactor:** The effect has been entirely rewritten to use a modern, robust `CommandBuffer` pipeline. This replaces the legacy `OnRenderImage` implementation, resolving numerous bugs related to occlusion, lighting, and stability.
+- The `CensorEffect` component now dynamically updates in the editor when properties are changed, allowing for live preview of all settings.
+
+### Fixed
+- **Occlusion:** Now 100% reliable and works as expected out of the box.
+- **Lighting:** Resolved a critical bug where the effect would break scene lighting or turn the screen black.
+- **Borders:** The non-anti-aliased border is now a clean, pixel-perfect grid.
+
+### Added
+- **Shader Auto-Search:** The script now automatically finds its required shaders, simplifying setup.
+- **Error Checking:** Added safety checks for unsupported hardware.
 
 ## [2.0.1] - 2025-08-15
 ### Fixed

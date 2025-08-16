@@ -1,13 +1,19 @@
 ﻿# Censor Effect for Unity
 
-A versatile and performant camera effect to censor objects on a specific layer with a pixelated shader. Supports the **Built-in Render Pipeline**.
+A simple, robust, and easy-to-use camera effect for censoring objects. This asset uses a hybrid `OnRenderImage` and `CommandBuffer` approach for maximum reliability and compatibility.
+
+Designed for the **Built-in Render Pipeline** and compatible with **Unity 2019.4+**.
 
 ![Sample](https://github.com/user-attachments/assets/479ff24e-876b-4243-9fb5-2cf481f04a9c)
 
 ## Features
-- **Easy to use:** Add a component to your camera and you're ready to go.
-- **Performant:** Uses a two-pass blur for efficient area expansion.
-- **Occlusion Culling:** Optional depth testing to correctly hide censored objects behind others.
+- **Easy to use:** Add the `CensorEffect` component to a camera, select the layer to censor, and it works out of the box.
+- **Reliable Occlusion:** Uses a temporary `CommandBuffer` to guarantee that depth testing works correctly and censored objects are hidden by other geometry.
+- **Configurable Appearance:**
+    - Control the pixelation level with the `Pixel Block Count` slider.
+    - Expand the censored area with the `Censor Area Expansion` slider.
+    - Choose between soft, anti-aliased edges or sharp, **pixel-perfect** hard edges.
+- **Automatic Setup:** Shaders are located automatically, so no manual linking is required.
 
 ## How to Install
 
@@ -33,13 +39,13 @@ A versatile and performant camera effect to censor objects on a specific layer w
     *   Select the `Camera` GameObject in your scene.
     *   In the Inspector, click `Add Component` and search for `CensorEffect`. Add it to the camera.
 
-The effect is now active! No other setup is required for the Built-in Render Pipeline.
+The effect is now active.
 
 ## Configure the Censor Effect
 -   Select your `Camera` GameObject.
 -   In the `CensorEffect` component, you can now configure the following settings:
     -   **Censor Layer:** The layer containing the objects to be pixelated.
-    -   **Enable Occlusion:** If checked, censored objects will be hidden by other objects in front of them. If unchecked, the effect will appear over everything (legacy behavior).
+    -   **Enable Occlusion:** If checked, censored objects will be hidden by other objects in front of them.
     -   **Pixel Block Count:** The number of pixel blocks to draw across the screen's height. Smaller numbers mean larger, more abstract blocks.
     -   **Censor Area Expansion:** How much to expand the censored area, useful for covering objects completely.
     -   **Enable Anti-Aliasing:** Controls the style of the censorship border. When enabled, the edges are soft and anti-aliased. When disabled, the edges are sharp and snap perfectly to the pixelation grid.
