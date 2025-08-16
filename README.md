@@ -1,14 +1,14 @@
-﻿# Censor Effect for Unity
+# Censor Effect for Unity
 
-A simple, robust, and easy-to-use camera effect for censoring objects. This asset uses a hybrid `OnRenderImage` and `CommandBuffer` approach for maximum reliability and compatibility.
+A simple, robust, and easy-to-use camera effect for censoring objects in the **Built-in Render Pipeline**.
 
-Designed for the **Built-in Render Pipeline** and compatible with **Unity 2019.4+**.
+This asset has been completely rewritten from the ground up for improved clarity and maintainability, while preserving the original's reliable, feature-rich functionality. It uses a temporary camera to render a mask of specified objects, providing guaranteed occlusion and compatibility.
 
 ![Sample](https://github.com/user-attachments/assets/479ff24e-876b-4243-9fb5-2cf481f04a9c)
 
 ## Features
 - **Easy to use:** Add the `CensorEffect` component to a camera, select the layer to censor, and it works out of the box.
-- **Reliable Occlusion:** Uses a temporary `CommandBuffer` to guarantee that depth testing works correctly and censored objects are hidden by other geometry.
+- **Reliable Occlusion:** Censored objects are correctly hidden by other geometry in the scene.
 - **Configurable Appearance:**
     - Control the pixelation level with the `Pixel Block Count` slider.
     - Expand the censored area with the `Censor Area Expansion` slider.
@@ -17,13 +17,14 @@ Designed for the **Built-in Render Pipeline** and compatible with **Unity 2019.4
 
 ## How to Install
 
-### Recommended: Unity PackageManager (for Unity 2019.4 or newer)
+### Unity PackageManager (Recommended)
 1. In the Unity Editor, go to `Window` > `Package Manager`.
 2. Click the `+` button in the top-left corner and select `Add package from git URL...`.
 3. Enter the following URL and click `Add`:
    ```
    https://github.com/ineedmypills/CensorEffect.git
    ```
+   *(Note: This requires Git to be installed on your system.)*
 
 ## How to Use
 
@@ -39,13 +40,11 @@ Designed for the **Built-in Render Pipeline** and compatible with **Unity 2019.4
     *   Select the `Camera` GameObject in your scene.
     *   In the Inspector, click `Add Component` and search for `CensorEffect`. Add it to the camera.
 
-The effect is now active.
+The effect is now active and can be configured in the Inspector.
 
-## Configure the Censor Effect
--   Select your `Camera` GameObject.
--   In the `CensorEffect` component, you can now configure the following settings:
-    -   **Censor Layer:** The layer containing the objects to be pixelated.
-    -   **Enable Occlusion:** If checked, censored objects will be hidden by other objects in front of them.
-    -   **Pixel Block Count:** The number of pixel blocks to draw across the screen's height. Smaller numbers mean larger, more abstract blocks.
-    -   **Censor Area Expansion:** How much to expand the censored area, useful for covering objects completely.
-    -   **Enable Anti-Aliasing:** Controls the style of the censorship border. When enabled, the edges are soft and anti-aliased. When disabled, the edges are sharp and snap perfectly to the pixelation grid.
+## Configuration
+-   **Censor Layer:** The layer containing the objects to be pixelated.
+-   **Enable Occlusion:** If checked, censored objects will be hidden by other objects in front of them.
+-   **Pixel Block Count:** The number of pixel blocks to draw across the screen's height. Smaller numbers mean larger, more abstract blocks.
+-   **Censor Area Expansion:** How much to expand the censored area, useful for covering objects completely.
+-   **Enable Anti-Aliasing:** Controls the style of the censorship border. When enabled, the edges are soft and anti-aliased. When disabled, the edges are sharp and snap perfectly to the pixelation grid.
