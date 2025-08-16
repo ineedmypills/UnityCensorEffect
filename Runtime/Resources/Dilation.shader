@@ -7,6 +7,7 @@ Shader "Hidden/Dilation"
     }
     SubShader
     {
+        // No culling, depth testing, or depth writing. This is a 2D post-processing effect.
         Cull Off ZWrite Off ZTest Always
 
         // Common definitions for both passes
