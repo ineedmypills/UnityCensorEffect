@@ -10,30 +10,17 @@ namespace CensorEffect.Runtime
     public class CensorEffect : MonoBehaviour
     {
         #region Public Settings
-
         [Header("Censor Settings")]
-        [Tooltip("Layers to be censored.")]
         public LayerMask CensorLayer = 0;
-
-        [Tooltip("Use the depth buffer to hide censored objects behind other objects.")]
         public bool EnableOcclusion = true;
 
-        [Tooltip("The number of pixel blocks to draw across the screen's height. Smaller numbers mean larger blocks.")]
-        [Range(1, 512)]
-        public float PixelBlockCount = 100f;
-
-        [Tooltip("How much to expand the censored area, in pixels.")]
-        [Range(0, 50)]
-        public int CensorAreaExpansionPixels = 5;
-
-        [Header("Appearance")]
-        [Tooltip("Enable smooth edges on censored areas.")]
+        [Header("Effect Settings")]
+        [Range(1, 512)] public float PixelBlockCount = 100f;
+        [Range(0, 50)] public int CensorAreaExpansionPixels = 5;
         public bool EnableAntiAliasing = true;
-
         #endregion
 
         #region Private Fields
-
         [Header("Shader References")]
         [SerializeField] private Shader _censorMaskShader;
         [SerializeField] private Shader _censorEffectShader;
@@ -44,34 +31,13 @@ namespace CensorEffect.Runtime
         private Material _dilationMaterial;
 
         private Camera _mainCamera;
-
-        // Command Buffer for rendering the censor mask
-        private CommandBuffer _commandBuffer;
-        private int _censorMaskID;
-
-        // List of renderers to be censored
         private List<Renderer> _renderersToCensor = new List<Renderer>();
-
-        private static readonly int PixelSizeID = Shader.PropertyToID("_PixelSize");
-        private static readonly int CensorMaskGlobalID = Shader.PropertyToID("_CensorMask");
-        private static readonly int AntiAliasingID = Shader.PropertyToID("_AntiAliasing");
-        private static readonly int DilationSizeID = Shader.PropertyToID("_DilationSize");
-
-        // Private state for tracking changes
-        private LayerMask _previousCensorLayer;
-        private bool _previousEnableOcclusion;
-        private float _previousPixelBlockCount;
-        private int _previousCensorAreaExpansionPixels;
-        private bool _previousEnableAntiAliasing;
-
         #endregion
 
         #region Unity Methods
-
         private void OnEnable()
         {
-            if (!SystemInfo.supportsImageEffects)
-            {
+            if (!SystemInfo.supportsImageEffects) {
                 enabled = false;
                 return;
             }
@@ -79,17 +45,8 @@ namespace CensorEffect.Runtime
             _mainCamera = GetComponent<Camera>();
             _mainCamera.depthTextureMode |= DepthTextureMode.Depth;
 
-            _censorMaskID = Shader.PropertyToID("_CensorMaskRT");
-
             CreateResources();
-
-            // Initial setup. The command buffer will be rebuilt if properties change.
-            if (AreResourcesCreated())
-            {
-                FindAndCacheRenderers();
-                SetupCommandBuffer();
-                UpdatePreviousProperties();
-            }
+            FindAndCacheRenderers();
         }
 
         private void OnDisable()
@@ -102,192 +59,126 @@ namespace CensorEffect.Runtime
         // We keep the method to ensure the effect can be disabled by disabling the component.
         private void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
-            // If we are here, the command buffer is not active or has been removed.
-            // Just blit the source to ensure the screen is not black.
-            Graphics.Blit(source, destination);
-        }
-
-        private void Update()
-        {
-            // In the editor, if the user changes a property, we need to rebuild the command buffer.
-            if (Application.isEditor && PropertiesChanged())
-            {
-                FindAndCacheRenderers();
-                SetupCommandBuffer();
-                UpdatePreviousProperties();
+            if (!AreResourcesCreated()) {
+                Graphics.Blit(source, destination);
+                return;
             }
         }
 
+            // Find renderers every frame in the editor to catch newly added objects.
+            if (Application.isEditor) {
+                FindAndCacheRenderers();
+            }
+
+            // --- Mask Generation ---
+            var maskDescriptor = new RenderTextureDescriptor(source.width, source.height, RenderTextureFormat.R8, 16);
+            RenderTexture maskRT = RenderTexture.GetTemporary(maskDescriptor);
+            RenderCensorMask(maskRT);
+
+            // --- Dilation ---
+            RenderTexture processedMask;
+            if (CensorAreaExpansionPixels > 0) {
+                processedMask = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.R8);
+                ApplyDilation(maskRT, processedMask);
+                RenderTexture.ReleaseTemporary(maskRT); // Release original mask
+            } else {
+                processedMask = maskRT; // Use original mask
+            }
+
+            // --- Final Composite ---
+            _censorEffectMaterial.SetFloat("_PixelSize", PixelBlockCount);
+            _censorEffectMaterial.SetFloat("_AntiAliasing", EnableAntiAliasing ? 1.0f : 0.0f);
+            _censorEffectMaterial.SetTexture("_CensorMask", processedMask);
+            Graphics.Blit(source, destination, _censorEffectMaterial);
+
+            // --- Cleanup ---
+            RenderTexture.ReleaseTemporary(processedMask);
+        }
         #endregion
 
         #region Core Logic
+        private void RenderCensorMask(RenderTexture destination)
+        {
+            // Use a temporary CommandBuffer to reliably render the mask with occlusion.
+            var cmd = new CommandBuffer { name = "Censor Mask Generation" };
+
+            // Set the scene's depth texture as a global variable for the shader to sample.
+            cmd.SetGlobalTexture("_SceneDepthTexture", BuiltinRenderTextureType.Depth);
+
+            // Draw the renderers into our mask texture.
+            cmd.SetRenderTarget(destination);
+            cmd.ClearRenderTarget(true, true, Color.clear);
+
+            _censorMaskMaterial.EnableKeyword(EnableOcclusion ? "_OCCLUSION_ON" : "__");
+
+            foreach (var renderer in _renderersToCensor) {
+                if (renderer != null && renderer.isVisible) {
+                    cmd.DrawRenderer(renderer, _censorMaskMaterial);
+                }
+            }
+
+            // Execute and release the command buffer.
+            Graphics.ExecuteCommandBuffer(cmd);
+            cmd.Release();
+        }
+
+        private bool PropertiesChanged()
+        {
+            _dilationMaterial.SetInt("_DilationSize", CensorAreaExpansionPixels);
+            var tempRT = RenderTexture.GetTemporary(source.width, source.height, 0, source.format);
+
+            // Horizontal Pass
+            Graphics.Blit(source, tempRT, _dilationMaterial, 0);
+            // Vertical Pass
+            Graphics.Blit(tempRT, destination, _dilationMaterial, 1);
+
+            RenderTexture.ReleaseTemporary(tempRT);
+        }
 
         private void FindAndCacheRenderers()
         {
             _renderersToCensor.Clear();
             var allRenderers = FindObjectsOfType<Renderer>();
-            foreach (var renderer in allRenderers)
-            {
-                if (renderer.isVisible && (CensorLayer & (1 << renderer.gameObject.layer)) != 0)
-                {
+            foreach (var renderer in allRenderers) {
+                if (renderer.gameObject.activeInHierarchy && renderer.isVisible && (CensorLayer & (1 << renderer.gameObject.layer)) != 0) {
                     _renderersToCensor.Add(renderer);
                 }
             }
         }
-
-        private void SetupCommandBuffer()
-        {
-            if (_commandBuffer != null)
-            {
-                CleanupCommandBuffer();
-            }
-
-            _commandBuffer = new CommandBuffer { name = "Censor Effect" };
-
-            // Ensure material properties (like shader keywords) are up to date before building the buffer.
-            UpdateMaterialProperties();
-
-            // --- Part 1: Generate the Censor Mask ---
-            // Create a temporary render texture for the mask (R8 format for single channel, 16-bit depth for occlusion).
-            var maskDescriptor = new RenderTextureDescriptor(_mainCamera.pixelWidth, _mainCamera.pixelHeight, RenderTextureFormat.R8, 16);
-            _commandBuffer.GetTemporaryRT(_censorMaskID, maskDescriptor, FilterMode.Bilinear);
-            // Draw all the renderers on the specified CensorLayer into the mask texture.
-            _commandBuffer.SetRenderTarget(_censorMaskID);
-            _commandBuffer.ClearRenderTarget(true, true, Color.clear);
-            foreach (var renderer in _renderersToCensor)
-            {
-                if (renderer != null && renderer.isVisible)
-                {
-                    _commandBuffer.DrawRenderer(renderer, _censorMaskMaterial);
-                }
-            }
-
-            // --- Part 2: Dilate the mask if required ---
-            if (CensorAreaExpansionPixels > 0)
-            {
-                // Create a second temporary render texture for the two-pass dilation.
-                int dilatedMaskID = Shader.PropertyToID("_DilatedCensorMaskTemp");
-                var dilatedMaskDescriptor = new RenderTextureDescriptor(_mainCamera.pixelWidth, _mainCamera.pixelHeight, RenderTextureFormat.R8, 0);
-                _commandBuffer.GetTemporaryRT(dilatedMaskID, dilatedMaskDescriptor, FilterMode.Bilinear);
-
-                // Pass 1: Horizontal dilation
-                _commandBuffer.Blit(_censorMaskID, dilatedMaskID, _dilationMaterial, 0);
-                // Pass 2: Vertical dilation (result goes back into original mask texture)
-                _commandBuffer.Blit(dilatedMaskID, _censorMaskID, _dilationMaterial, 1);
-
-                // We are done with the intermediate texture.
-                _commandBuffer.ReleaseTemporaryRT(dilatedMaskID);
-            }
-
-            // --- Part 3: Apply the final pixelation effect ---
-            // Set the final mask (either original or dilated) as a global texture for the effect shader to use.
-            _commandBuffer.SetGlobalTexture(CensorMaskGlobalID, _censorMaskID);
-
-            // To apply a full-screen effect safely, we must copy the screen content to a temporary
-            // texture (`_ScreenCopy`) and then blit from that copy back to the screen.
-            // Reading from and writing to the same `CameraTarget` in one command is not reliable.
-            int screenCopyID = Shader.PropertyToID("_ScreenCopy");
-            _commandBuffer.GetTemporaryRT(screenCopyID, _mainCamera.pixelWidth, _mainCamera.pixelHeight, 0, FilterMode.Bilinear, RenderTextureFormat.Default);
-            _commandBuffer.Blit(BuiltinRenderTextureType.CameraTarget, screenCopyID);
-            _commandBuffer.Blit(screenCopyID, BuiltinRenderTextureType.CameraTarget, _censorEffectMaterial);
-
-            // --- Part 4: Cleanup ---
-            // Release all temporary textures used in this command buffer.
-            _commandBuffer.ReleaseTemporaryRT(_censorMaskID);
-            _commandBuffer.ReleaseTemporaryRT(screenCopyID);
-
-            // Add the fully populated command buffer to the camera.
-            _mainCamera.AddCommandBuffer(CameraEvent.BeforeImageEffects, _commandBuffer);
-        }
-
-        private bool PropertiesChanged()
-        {
-            return _previousCensorLayer != CensorLayer ||
-                   _previousEnableOcclusion != EnableOcclusion ||
-                   !Mathf.Approximately(_previousPixelBlockCount, PixelBlockCount) ||
-                   _previousCensorAreaExpansionPixels != CensorAreaExpansionPixels ||
-                   _previousEnableAntiAliasing != EnableAntiAliasing;
-        }
-
-        private void UpdatePreviousProperties()
-        {
-            _previousCensorLayer = CensorLayer;
-            _previousEnableOcclusion = EnableOcclusion;
-            _previousPixelBlockCount = PixelBlockCount;
-            _previousCensorAreaExpansionPixels = CensorAreaExpansionPixels;
-            _previousEnableAntiAliasing = EnableAntiAliasing;
-        }
-
-
-        private void UpdateMaterialProperties()
-        {
-            _censorEffectMaterial.SetFloat(PixelSizeID, PixelBlockCount);
-            _censorEffectMaterial.SetFloat(AntiAliasingID, EnableAntiAliasing ? 1f : 0f);
-
-            if (EnableOcclusion)
-            {
-                _censorMaskMaterial.EnableKeyword("_OCCLUSION_ON");
-            }
-            else
-            {
-                _censorMaskMaterial.DisableKeyword("_OCCLUSION_ON");
-            }
-        }
-
         #endregion
 
         #region Resource Management
-
         private void CreateResources()
         {
-            // Find shaders if they are not assigned in the inspector.
             if (_censorMaskShader == null) _censorMaskShader = Shader.Find("Hidden/CensorMask");
             if (_censorEffectShader == null) _censorEffectShader = Shader.Find("Hidden/CensorEffect");
             if (_dilationShader == null) _dilationShader = Shader.Find("Hidden/CensorDilation");
 
-            // Create materials from the shaders.
             _censorMaskMaterial = CreateMaterial(_censorMaskShader);
             _censorEffectMaterial = CreateMaterial(_censorEffectShader);
             _dilationMaterial = CreateMaterial(_dilationShader);
         }
-
-        private bool AreResourcesCreated()
-        {
-            return _censorEffectMaterial != null && _censorMaskMaterial != null && _dilationMaterial != null;
-        }
-
 
         private void CleanupResources()
         {
             if (_censorMaskMaterial != null) DestroyImmediate(_censorMaskMaterial);
             if (_censorEffectMaterial != null) DestroyImmediate(_censorEffectMaterial);
             if (_dilationMaterial != null) DestroyImmediate(_dilationMaterial);
-
-            _censorMaskMaterial = null;
-            _censorEffectMaterial = null;
-            _dilationMaterial = null;
-        }
-
-        private void CleanupCommandBuffer()
-        {
-            if (_commandBuffer != null)
-            {
-                // Check if camera exists, as it might have been destroyed.
-                if (_mainCamera != null)
-                {
-                    _mainCamera.RemoveCommandBuffer(CameraEvent.BeforeImageEffects, _commandBuffer);
-                }
-                _commandBuffer.Release();
-                _commandBuffer = null;
-            }
         }
 
         private Material CreateMaterial(Shader shader)
         {
-            if (shader == null || !shader.isSupported) return null;
+            if (shader == null || !shader.isSupported) {
+                Debug.LogError($"Shader {shader.name} not found or not supported.", this);
+                return null;
+            }
             return new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
         }
 
+        private bool AreResourcesCreated()
+        {
+            return _censorMaskMaterial != null && _censorEffectMaterial != null && _dilationMaterial != null;
+        }
         #endregion
     }
 }

@@ -1,6 +1,6 @@
 ﻿# Censor Effect for Unity
 
-A robust and easy-to-use camera effect for censoring objects on specific layers. Uses a modern `CommandBuffer` pipeline for reliable occlusion and pixel-perfect rendering.
+A simple, robust, and easy-to-use camera effect for censoring objects. This asset uses a hybrid `OnRenderImage` and `CommandBuffer` approach for maximum reliability and compatibility.
 
 Designed for the **Built-in Render Pipeline** and compatible with **Unity 2019.4+**.
 
@@ -8,8 +8,7 @@ Designed for the **Built-in Render Pipeline** and compatible with **Unity 2019.4
 
 ## Features
 - **Easy to use:** Add the `CensorEffect` component to a camera, select the layer to censor, and it works out of the box.
-- **Reliable Occlusion:** Optional depth testing correctly hides censored objects behind other geometry.
-- **Dynamic Properties:** All settings can be changed at runtime in the editor.
+- **Reliable Occlusion:** Uses a temporary `CommandBuffer` to guarantee that depth testing works correctly and censored objects are hidden by other geometry.
 - **Configurable Appearance:**
     - Control the pixelation level with the `Pixel Block Count` slider.
     - Expand the censored area with the `Censor Area Expansion` slider.
