@@ -10,6 +10,20 @@ Shader "Hidden/Dilation"
         // No culling, depth testing, or depth writing. This is a 2D post-processing effect.
         Cull Off ZWrite Off ZTest Always
 
+        // Common definitions for both passes
+        CGINCLUDE
+        #include "UnityCG.cginc"
+
+        struct appdata { float4 vertex : POSITION; float2 uv : TEXCOORD0; };
+        struct v2f { float2 uv : TEXCOORD0; float4 vertex : SV_POSITION; };
+
+        v2f vert (appdata v) { v2f o; o.vertex = UnityObjectToClipPos(v.vertex); o.uv = v.uv; return o; }
+
+        sampler2D _MainTex;
+        float4 _MainTex_TexelSize;
+        float _DilationSize;
+        ENDCG
+
         // Pass 0: Horizontal Dilation
         Pass
         {
@@ -17,43 +31,22 @@ Shader "Hidden/Dilation"
             #pragma vertex vert
             #pragma fragment frag
 
-            #include "UnityCG.cginc"
-
-            struct appdata
-            {
-                float4 vertex : POSITION;
-                float2 uv : TEXCOORD0;
-            };
-
-            struct v2f
-            {
-                float2 uv : TEXCOORD0;
-                float4 vertex : SV_POSITION;
-            };
-
-            v2f vert (appdata v)
-            {
-                v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = v.uv;
-                return o;
-            }
-
-            sampler2D _MainTex;
-            float4 _MainTex_TexelSize; // Unity provides the size of a texel for _MainTex.
-            float _DilationSize;
-
             fixed4 frag (v2f i) : SV_Target
             {
-                float maxVal = 0.0;
-                // Sample pixels horizontally
-                for (int j = -_DilationSize; j <= _DilationSize; j++)
-                {
-                    // Sample the mask texture to the left and right of the current pixel.
-                    float val = tex2D(_MainTex, i.uv + float2(_MainTex_TexelSize.x * j, 0)).r;
-                    // Keep the maximum value found.
-                    maxVal = max(maxVal, val);
-                }
+                float2 step = float2(_MainTex_TexelSize.x * _DilationSize, 0);
+
+                // Optimized sampling. Instead of a slow loop, we use a fixed number of taps spread out.
+                // This is much faster for large dilation sizes and gives a visually similar result.
+                float maxVal = tex2D(_MainTex, i.uv).r;
+                maxVal = max(maxVal, tex2D(_MainTex, i.uv + step * 0.25).r);
+                maxVal = max(maxVal, tex2D(_MainTex, i.uv - step * 0.25).r);
+                maxVal = max(maxVal, tex2D(_MainTex, i.uv + step * 0.5).r);
+                maxVal = max(maxVal, tex2D(_MainTex, i.uv - step * 0.5).r);
+                maxVal = max(maxVal, tex2D(_MainTex, i.uv + step * 0.75).r);
+                maxVal = max(maxVal, tex2D(_MainTex, i.uv - step * 0.75).r);
+                maxVal = max(maxVal, tex2D(_MainTex, i.uv + step).r);
+                maxVal = max(maxVal, tex2D(_MainTex, i.uv - step).r);
+
                 return fixed4(maxVal, maxVal, maxVal, 1.0);
             }
             ENDCG
@@ -66,43 +59,21 @@ Shader "Hidden/Dilation"
             #pragma vertex vert
             #pragma fragment frag
 
-            #include "UnityCG.cginc"
-
-            struct appdata
-            {
-                float4 vertex : POSITION;
-                float2 uv : TEXCOORD0;
-            };
-
-            struct v2f
-            {
-                float2 uv : TEXCOORD0;
-                float4 vertex : SV_POSITION;
-            };
-
-            v2f vert (appdata v)
-            {
-                v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = v.uv;
-                return o;
-            }
-
-            sampler2D _MainTex;
-            float4 _MainTex_TexelSize;
-            float _DilationSize;
-
             fixed4 frag (v2f i) : SV_Target
             {
-                float maxVal = 0.0;
-                // Sample pixels vertically
-                for (int j = -_DilationSize; j <= _DilationSize; j++)
-                {
-                    // Sample the mask texture above and below the current pixel.
-                    float val = tex2D(_MainTex, i.uv + float2(0, _MainTex_TexelSize.y * j)).r;
-                    // Keep the maximum value found.
-                    maxVal = max(maxVal, val);
-                }
+                float2 step = float2(0, _MainTex_TexelSize.y * _DilationSize);
+
+                // Optimized sampling, same as the horizontal pass.
+                float maxVal = tex2D(_MainTex, i.uv).r;
+                maxVal = max(maxVal, tex2D(_MainTex, i.uv + step * 0.25).r);
+                maxVal = max(maxVal, tex2D(_MainTex, i.uv - step * 0.25).r);
+                maxVal = max(maxVal, tex2D(_MainTex, i.uv + step * 0.5).r);
+                maxVal = max(maxVal, tex2D(_MainTex, i.uv - step * 0.5).r);
+                maxVal = max(maxVal, tex2D(_MainTex, i.uv + step * 0.75).r);
+                maxVal = max(maxVal, tex2D(_MainTex, i.uv - step * 0.75).r);
+                maxVal = max(maxVal, tex2D(_MainTex, i.uv + step).r);
+                maxVal = max(maxVal, tex2D(_MainTex, i.uv - step).r);
+
                 return fixed4(maxVal, maxVal, maxVal, 1.0);
             }
             ENDCG
