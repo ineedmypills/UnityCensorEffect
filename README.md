@@ -1,4 +1,4 @@
-# PPSv2 Censor Effect
+# Post-processing Censor Effect
 
 A post-processing effect for Unity's Post Processing Stack v2 that pixelates or censors objects on specific layers.
 
