@@ -47,19 +47,22 @@ Shader "Hidden/CensorEffect/Censor"
             fixed4 frag (v2f i) : SV_Target
             {
                 fixed4 originalColor = tex2D(_MainTex, i.uv);
-                float mask = tex2D(_CensorMaskTex, i.uv).r;
+                float2 pixelatedUV = floor(i.uv * _ScreenParams.xy / _PixelSize) * _PixelSize / _ScreenParams.xy;
 
-                if (mask > 0.1)
+                if (_HardEdges > 0.5)
                 {
-                    float2 pixelatedUV = floor(i.uv * _ScreenParams.xy / _PixelSize) * _PixelSize / _ScreenParams.xy;
-                    fixed4 pixelatedColor = tex2D(_MainTex, pixelatedUV);
-
-                    if (_HardEdges > 0.5)
+                    float pixelatedMask = tex2D(_CensorMaskTex, pixelatedUV).r;
+                    if (pixelatedMask > 0.1)
                     {
-                        return pixelatedColor;
+                        return tex2D(_MainTex, pixelatedUV);
                     }
-                    else
+                }
+                else
+                {
+                    float mask = tex2D(_CensorMaskTex, i.uv).r;
+                    if (mask > 0.1)
                     {
+                        fixed4 pixelatedColor = tex2D(_MainTex, pixelatedUV);
                         return lerp(originalColor, pixelatedColor, mask);
                     }
                 }
