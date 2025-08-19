@@ -38,7 +38,11 @@ public sealed class CensorEffectRenderer : PostProcessEffectRenderer<CensorEffec
 
     public override void Render(PostProcessRenderContext context)
     {
-        if (_censorShader == null) return;
+        if (_censorShader == null)
+        {
+            context.command.BlitFullscreenTriangle(context.source, context.destination);
+            return;
+        }
 
         // Setup the property sheet
         var sheet = context.propertySheets.Get(_censorShader);
