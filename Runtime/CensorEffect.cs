@@ -43,10 +43,11 @@ public sealed class CensorEffectRenderer : PostProcessEffectRenderer<CensorEffec
         // Setup the property sheet
         var sheet = context.propertySheets.Get(_censorShader);
         sheet.properties.SetFloat("_PixelSize", settings.pixelSize);
-        sheet.properties.SetInt("_HardEdges", settings.hardEdges ? 1 : 0);
+        // Use SetFloat for _HardEdges as it's a half in the shader now
+        sheet.properties.SetFloat("_HardEdges", settings.hardEdges ? 1.0f : 0.0f);
 
         // Render the objects on the specified layer to a separate render texture
-        _censorLayerMask = settings.censorLayer.value;
+        _censorLayerMask = settings.censorLayer;
         if (_censorLayerMask != 0)
         {
             // Match the camera settings
