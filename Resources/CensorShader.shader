@@ -2,8 +2,10 @@ Shader "Hidden/CensorEffect/Censor"
 {
     Properties
     {
+        // _MainTex is provided by the Blit command.
         _MainTex ("Texture", 2D) = "white" {}
-        _CensorMaskTex ("Censor Mask", 2D) = "black" {}
+
+        // _PixelSize and _HardEdges are set by the CensorEffectRenderer script.
         _PixelSize ("Pixel Size", Float) = 50.0
         _HardEdges ("Hard Edges", Float) = 0.0
     }
@@ -20,7 +22,11 @@ Shader "Hidden/CensorEffect/Censor"
             #include "UnityCG.cginc"
 
             sampler2D _MainTex;
-            sampler2D _CensorMaskTex;
+
+            // This texture is now provided globally by the CensorMaskGenerator camera.
+            // We just need to declare it here to be able to sample it.
+            sampler2D _GlobalCensorMask;
+
             float _PixelSize;
             float _HardEdges;
 
@@ -51,7 +57,8 @@ Shader "Hidden/CensorEffect/Censor"
 
                 if (_HardEdges > 0.5)
                 {
-                    float pixelatedMask = tex2D(_CensorMaskTex, pixelatedUV).r;
+                    // Sample the global mask texture at the pixelated UV for a hard-edged blocky effect.
+                    float pixelatedMask = tex2D(_GlobalCensorMask, pixelatedUV).r;
                     if (pixelatedMask > 0.1)
                     {
                         return tex2D(_MainTex, pixelatedUV);
@@ -59,7 +66,8 @@ Shader "Hidden/CensorEffect/Censor"
                 }
                 else
                 {
-                    float mask = tex2D(_CensorMaskTex, i.uv).r;
+                    // Sample the global mask texture for a soft-edged effect.
+                    float mask = tex2D(_GlobalCensorMask, i.uv).r;
                     if (mask > 0.1)
                     {
                         fixed4 pixelatedColor = tex2D(_MainTex, pixelatedUV);
