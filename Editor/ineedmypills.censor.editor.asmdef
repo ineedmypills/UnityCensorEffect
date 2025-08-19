@@ -1,8 +1,8 @@
 {
-  "name": "INeedMyPills.Censor.Editor",
+  "name": "ineedmypills.censor.editor",
   "references": [
-    "com.unity.post-processing.Editor",
-    "INeedMyPills.Censor.Runtime"
+    "Unity.Postprocessing.Editor",
+    "ineedmypills.censor.runtime"
   ],
   "includePlatforms": [
     "Editor"

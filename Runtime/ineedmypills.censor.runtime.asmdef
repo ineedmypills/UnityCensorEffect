@@ -1,7 +1,7 @@
 {
-  "name": "INeedMyPills.Censor.Runtime",
+  "name": "ineedmypills.censor.runtime",
   "references": [
-    "com.unity.post-processing.Runtime"
+    "Unity.Postprocessing.Runtime"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
