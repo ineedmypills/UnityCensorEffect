@@ -7,7 +7,7 @@ using UnityEngine.Rendering.PostProcessing;
 public sealed class CensorEffect : PostProcessEffectSettings
 {
     [Tooltip("The layer(s) to apply the censor effect to.")]
-    public LayerMaskParameter censorLayer = new LayerMaskParameter { value = 0 };
+    public LayerMask censorLayer;
 
     [Range(1, 256), Tooltip("The size of the pixelation blocks.")]
     public IntParameter pixelSize = new IntParameter { value = 50 };
@@ -46,7 +46,7 @@ public sealed class CensorEffectRenderer : PostProcessEffectRenderer<CensorEffec
         sheet.properties.SetInt("_HardEdges", settings.hardEdges ? 1 : 0);
 
         // Render the objects on the specified layer to a separate render texture
-        _censorLayerMask = settings.censorLayer.value;
+        _censorLayerMask = settings.censorLayer;
         if (_censorLayerMask != 0)
         {
             // Match the camera settings
