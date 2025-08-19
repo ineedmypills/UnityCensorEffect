@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Rendering.PostProcessing;
 
 [Serializable]
@@ -65,6 +66,10 @@ public sealed class CensorEffectRenderer : PostProcessEffectRenderer<CensorEffec
         cmd.BeginSample("CensorEffect");
 
         var maskTexture = RenderTexture.GetTemporary(context.width, context.height, 16, RenderTextureFormat.R8);
+
+        // It seems that when using RenderWithShader on a secondary camera, the built-in _CameraDepthTexture
+        // is not reliably passed. We can fix this by manually binding the depth texture to a custom global name.
+        cmd.SetGlobalTexture("_CensorDepthTexture", BuiltinRenderTextureType.Depth);
 
         _censorCamera.CopyFrom(context.camera);
         // Explicitly copy projection matrix for robust depth testing

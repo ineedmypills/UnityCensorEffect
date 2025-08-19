@@ -10,7 +10,7 @@ Shader "Hidden/CensorEffect/WhiteMask"
             #pragma fragment frag
             #include "UnityCG.cginc"
 
-            sampler2D _CameraDepthTexture;
+            sampler2D _CensorDepthTexture;
 
             struct appdata {
                 float4 vertex : POSITION;
@@ -29,16 +29,25 @@ Shader "Hidden/CensorEffect/WhiteMask"
             }
 
             fixed4 frag (v2f i) : SV_Target {
-                float sceneZ = tex2Dproj(_CameraDepthTexture, UNITY_PROJ_COORD(i.screenPos)).r;
-                float currentZ = i.screenPos.z / i.screenPos.w;
+                // Sample the raw depth from the main camera's depth texture.
+                float rawSceneZ = tex2Dproj(_CensorDepthTexture, UNITY_PROJ_COORD(i.screenPos)).r;
+                // Get the raw depth of the current fragment being rendered.
+                float rawCurrentZ = i.screenPos.z / i.screenPos.w;
 
-                // Discard this fragment if it's behind what's already in the depth buffer
-                // (Unity uses a reversed-Z buffer on modern APIs, so LESS means FURTHER)
-                if (currentZ < sceneZ - 0.0001) {
+                // To ensure the comparison is accurate at all distances and not prone to
+                // precision issues with non-linear depth buffers, we linearize both values.
+                // Linear01Depth converts the raw depth value to a linear value between 0 (near) and 1 (far).
+                float linearSceneZ = Linear01Depth(rawSceneZ);
+                float linearCurrentZ = Linear01Depth(rawCurrentZ);
+
+                // Now we can do a simple, direct comparison. If the current object's linear
+                // depth is greater than the scene's, it must be behind it.
+                // We add a small epsilon to prevent z-fighting on surfaces that are very close.
+                if (linearCurrentZ > linearSceneZ + 0.00001) {
                     discard;
                 }
 
-                // Otherwise, it's visible, so draw the white mask
+                // Otherwise, it's visible, so draw the white mask.
                 return fixed4(1.0, 1.0, 1.0, 1.0);
             }
             ENDCG
