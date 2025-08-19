@@ -1,0 +1,15 @@
+{
+  "name": "INeedMyPills.Censor.Runtime",
+  "references": [
+    "com.unity.post-processing.Runtime"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

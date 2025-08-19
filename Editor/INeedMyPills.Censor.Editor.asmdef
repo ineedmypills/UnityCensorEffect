@@ -1,0 +1,18 @@
+{
+  "name": "INeedMyPills.Censor.Editor",
+  "references": [
+    "com.unity.post-processing.Editor",
+    "INeedMyPills.Censor.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
