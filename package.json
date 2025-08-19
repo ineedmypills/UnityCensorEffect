@@ -5,7 +5,7 @@
   "description": "A post-processing effect for Unity's Post Processing Stack v2 that pixelates or censors objects on specific layers. Corrected package structure and shader syntax.",
   "unity": "2019.4",
   "dependencies": {
-    "com.unity.post-processing": "2.3.0"
+    "com.unity.post-processing"
   },
   "keywords": [
     "unity",
