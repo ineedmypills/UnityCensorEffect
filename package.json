@@ -1,7 +1,7 @@
 {
   "name": "com.ineedmypills.censor",
   "version": "1.0.3",
-  "displayName": "PPSv2 Censor Effect",
+  "displayName": "Post-processing Censor Effect",
   "description": "A post-processing effect for Unity's Post Processing Stack v2 that pixelates or censors objects on specific layers. Corrected package structure and shader syntax.",
   "unity": "2019.4",
   "keywords": [
@@ -13,6 +13,6 @@
   ],
   "author": {
     "name": "ineedmypills",
-    "email": "user@example.com"
+    "email": "egor.glukhikh06@gmail.com"
   }
 }
