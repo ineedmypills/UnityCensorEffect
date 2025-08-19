@@ -7,7 +7,7 @@ using UnityEngine.Rendering.PostProcessing;
 public sealed class CensorEffect : PostProcessEffectSettings
 {
     [Tooltip("The layer(s) to apply the censor effect to.")]
-    public LayerMask censorLayer;
+    public LayerMaskParameter censorLayer = new LayerMaskParameter();
 
     [Range(1, 256), Tooltip("The size of the pixelation blocks.")]
     public IntParameter pixelSize = new IntParameter { value = 50 };
