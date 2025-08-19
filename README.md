@@ -9,6 +9,12 @@ A post-processing effect for Unity's Post Processing Stack v2 that pixelates or 
 *   **Hard Edges:** Option to maintain a sharp, clean edge for the censored area, conforming to the object's silhouette.
 *   **Occlusion Support:** The effect is correctly occluded by objects in the foreground.
 
+## Prerequisites
+
+**This package requires the Unity Post Processing Stack v2 package.**
+
+Before installing, please ensure you have installed the Post Processing package via the Unity Package Manager (`Window > Package Manager`).
+
 ## Installation
 
 This package is a standalone UPM package. To install, use the Unity Package Manager:
