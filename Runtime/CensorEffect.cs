@@ -7,30 +7,36 @@ using UnityEngine.Rendering.PostProcessing;
 public sealed class CensorEffect : PostProcessEffectSettings
 {
     [Tooltip("The layer(s) to apply the censor effect to.")]
-    public LayerMaskParameter censorLayer = new LayerMaskParameter();
+    public LayerMaskParameter censorLayer = new LayerMaskParameter { value = 0 };
 
     [Range(1, 256), Tooltip("The size of the pixelation blocks.")]
     public IntParameter pixelSize = new IntParameter { value = 50 };
 
     [Tooltip("Crops the censorship to the object's boundary with a hard edge.")]
     public BoolParameter hardEdges = new BoolParameter { value = false };
+
+    [Header("Debug")]
+    [Tooltip("Shows the generated censor mask instead of the final effect.")]
+    public BoolParameter showMask = new BoolParameter { value = false };
+
+    public override bool IsEnabledAndSupported(PostProcessRenderContext context)
+    {
+        return enabled.value && censorLayer.value != 0;
+    }
 }
 
 public sealed class CensorEffectRenderer : PostProcessEffectRenderer<CensorEffect>
 {
     private Shader _censorShader;
     private Shader _whiteMaskShader;
-    private int _censorLayerMask;
     private Camera _censorCamera;
-    private RenderTexture _censorLayerTexture;
 
     public override void Init()
     {
-        _censorShader = Shader.Find("Hidden/Custom/CensorShader");
-        _whiteMaskShader = Shader.Find("Hidden/Custom/WhiteMask");
+        _censorShader = Shader.Find("Hidden/CensorEffect/Censor");
+        _whiteMaskShader = Shader.Find("Hidden/CensorEffect/WhiteMask");
 
-        // Create a temporary camera for rendering the censor layer
-        var go = new GameObject("Censor Camera")
+        var go = new GameObject("Censor Mask Camera")
         {
             hideFlags = HideFlags.HideAndDontSave
         };
@@ -40,49 +46,40 @@ public sealed class CensorEffectRenderer : PostProcessEffectRenderer<CensorEffec
 
     public override void Render(PostProcessRenderContext context)
     {
-        // If the main shader is missing, just pass the texture through to avoid breaking the chain.
-        if (_censorShader == null)
+        if (_censorShader == null || _whiteMaskShader == null)
         {
             context.command.BlitFullscreenTriangle(context.source, context.destination);
             return;
         }
 
+        var cmd = context.command;
+        cmd.BeginSample("CensorEffect");
+
+        var maskTexture = RenderTexture.GetTemporary(context.width, context.height, 0, RenderTextureFormat.R8);
+
+        _censorCamera.CopyFrom(context.camera);
+        _censorCamera.cullingMask = settings.censorLayer.value;
+        _censorCamera.clearFlags = CameraClearFlags.SolidColor;
+        _censorCamera.backgroundColor = Color.clear;
+        _censorCamera.targetTexture = maskTexture;
+        _censorCamera.RenderWithShader(_whiteMaskShader, "RenderType");
+
         var sheet = context.propertySheets.Get(_censorShader);
         sheet.properties.SetFloat("_PixelSize", settings.pixelSize);
         sheet.properties.SetFloat("_HardEdges", settings.hardEdges ? 1.0f : 0.0f);
+        sheet.properties.SetTexture("_CensorMaskTex", maskTexture);
 
-        _censorLayerMask = settings.censorLayer.value;
-
-        // Only render the mask if a layer is selected and we have the shader for it
-        if (_censorLayerMask != 0 && _whiteMaskShader != null)
+        if (settings.showMask.value)
         {
-            _censorCamera.CopyFrom(context.camera);
-            _censorCamera.cullingMask = _censorLayerMask;
-            _censorCamera.clearFlags = CameraClearFlags.SolidColor;
-            _censorCamera.backgroundColor = Color.clear;
-
-            _censorLayerTexture = RenderTexture.GetTemporary(context.width, context.height, 0, RenderTextureFormat.R8);
-            _censorCamera.targetTexture = _censorLayerTexture;
-
-            // Render the objects with a solid white shader to create the mask
-            _censorCamera.RenderWithShader(_whiteMaskShader, "RenderType");
-
-            sheet.properties.SetTexture("_CensorMaskTex", _censorLayerTexture);
+            cmd.BlitFullscreenTriangle(maskTexture, context.destination);
         }
         else
         {
-            // If no layer is selected, or the mask shader is missing, use a blank texture
-            sheet.properties.SetTexture("_CensorMaskTex", Texture2D.blackTexture);
+            cmd.BlitFullscreenTriangle(context.source, context.destination, sheet, 0);
         }
 
-        context.command.BlitFullscreenTriangle(context.source, context.destination, sheet, 0);
-
-        // Cleanup the temporary texture
-        if (_censorLayerTexture != null)
-        {
-            RenderTexture.ReleaseTemporary(_censorLayerTexture);
-            _censorLayerTexture = null; // Set to null to prevent double release
-        }
+        RenderTexture.ReleaseTemporary(maskTexture);
+        cmd.EndSample("CensorEffect");
     }
 
     public override void Release()
