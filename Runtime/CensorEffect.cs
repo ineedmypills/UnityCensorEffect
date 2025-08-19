@@ -94,7 +94,10 @@ public sealed class CensorEffectRenderer : PostProcessEffectRenderer<CensorEffec
             // can fail on newer Unity versions due to ambiguity in overload resolution for RenderTargetIdentifier.
             // A safer, more explicit approach is to blit to a temporary texture first, and then blit from
             // that temporary texture to the destination with the material. This resolves the compiler errors.
-            var temp = RenderTexture.GetTemporary(context.width, context.height, 0, context.sourceFormat);
+            // We use context.GetScreenSpaceTemporaryRT to ensure the temporary texture matches the camera's
+            // render target descriptor, preserving settings like MSAA, VR, etc. This fixes the mask and
+            // compatibility with other effects like SSR.
+            var temp = context.GetScreenSpaceTemporaryRT(0, context.sourceFormat);
             cmd.Blit(context.source, temp);
             cmd.Blit(temp, context.destination, _censorMaterial, 0);
             RenderTexture.ReleaseTemporary(temp);
