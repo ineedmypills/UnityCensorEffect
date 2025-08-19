@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2025-08-19
+
+### Fixed
+- Corrected a bug in the shader's "Hard Edges" logic that caused holes in the censored effect. The logic is now more robust and intuitive.
+- Standardized all mentions of the author's nickname to `ineedmypills`.
+
+### Changed
+- Refactored the shader to provide a clearer distinction between hard and soft edge modes.
+- Renamed assembly definition files to use the lowercase `ineedmypills` nickname for consistency.
+
 ## [1.0.2] - 2025-08-19
 
 ### Fixed
