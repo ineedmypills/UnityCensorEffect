@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.Rendering.PostProcessing;
 
 [Serializable]
-[PostProcess(typeof(CensorEffectRenderer), PostProcessEvent.AfterStack, "Custom/Censor")]
+[PostProcess(typeof(CensorEffectRenderer), PostProcessEvent.BeforeStack, "Custom/Censor")]
 public sealed class CensorEffect : PostProcessEffectSettings
 {
     [Tooltip("The layer(s) to apply the censor effect to.")]
@@ -27,14 +27,21 @@ public sealed class CensorEffect : PostProcessEffectSettings
 
 public sealed class CensorEffectRenderer : PostProcessEffectRenderer<CensorEffect>
 {
+    private Camera _censorCamera;
+    private Material _censorMaterial;
     private Shader _censorShader;
     private Shader _whiteMaskShader;
-    private Camera _censorCamera;
 
     public override void Init()
     {
         _censorShader = Shader.Find("Hidden/CensorEffect/Censor");
         _whiteMaskShader = Shader.Find("Hidden/CensorEffect/WhiteMask");
+
+        if (_censorShader != null)
+        {
+            _censorMaterial = new Material(_censorShader);
+            _censorMaterial.hideFlags = HideFlags.HideAndDontSave;
+        }
 
         var go = new GameObject("Censor Mask Camera")
         {
@@ -46,36 +53,39 @@ public sealed class CensorEffectRenderer : PostProcessEffectRenderer<CensorEffec
 
     public override void Render(PostProcessRenderContext context)
     {
-        if (_censorShader == null || _whiteMaskShader == null)
+        context.camera.depthTextureMode |= DepthTextureMode.Depth;
+
+        if (_censorMaterial == null || _whiteMaskShader == null)
         {
-            context.command.BlitFullscreenTriangle(context.source, context.destination);
+            context.command.Blit(context.source, context.destination);
             return;
         }
 
         var cmd = context.command;
         cmd.BeginSample("CensorEffect");
 
-        var maskTexture = RenderTexture.GetTemporary(context.width, context.height, 0, RenderTextureFormat.R8);
+        var maskTexture = RenderTexture.GetTemporary(context.width, context.height, 16, RenderTextureFormat.R8);
 
         _censorCamera.CopyFrom(context.camera);
+        // Explicitly copy projection matrix for robust depth testing
+        _censorCamera.projectionMatrix = context.camera.projectionMatrix;
         _censorCamera.cullingMask = settings.censorLayer.value;
         _censorCamera.clearFlags = CameraClearFlags.SolidColor;
         _censorCamera.backgroundColor = Color.clear;
         _censorCamera.targetTexture = maskTexture;
         _censorCamera.RenderWithShader(_whiteMaskShader, "RenderType");
 
-        var sheet = context.propertySheets.Get(_censorShader);
-        sheet.properties.SetFloat("_PixelSize", settings.pixelSize);
-        sheet.properties.SetFloat("_HardEdges", settings.hardEdges ? 1.0f : 0.0f);
-        sheet.properties.SetTexture("_CensorMaskTex", maskTexture);
+        _censorMaterial.SetFloat("_PixelSize", settings.pixelSize);
+        _censorMaterial.SetFloat("_HardEdges", settings.hardEdges ? 1.0f : 0.0f);
+        _censorMaterial.SetTexture("_CensorMaskTex", maskTexture);
 
         if (settings.showMask.value)
         {
-            cmd.BlitFullscreenTriangle(maskTexture, context.destination);
+            cmd.Blit(maskTexture, context.destination);
         }
         else
         {
-            cmd.BlitFullscreenTriangle(context.source, context.destination, sheet, 0);
+            cmd.Blit(context.source, context.destination, _censorMaterial, 0);
         }
 
         RenderTexture.ReleaseTemporary(maskTexture);
@@ -85,9 +95,7 @@ public sealed class CensorEffectRenderer : PostProcessEffectRenderer<CensorEffec
     public override void Release()
     {
         base.Release();
-        if (_censorCamera != null)
-        {
-            UnityEngine.Object.DestroyImmediate(_censorCamera.gameObject);
-        }
+        if (_censorCamera != null) UnityEngine.Object.DestroyImmediate(_censorCamera.gameObject);
+        if (_censorMaterial != null) UnityEngine.Object.DestroyImmediate(_censorMaterial);
     }
 }
