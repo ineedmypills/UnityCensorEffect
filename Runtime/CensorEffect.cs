@@ -47,7 +47,7 @@ public sealed class CensorEffectRenderer : PostProcessEffectRenderer<CensorEffec
         sheet.properties.SetFloat("_HardEdges", settings.hardEdges ? 1.0f : 0.0f);
 
         // Render the objects on the specified layer to a separate render texture
-        _censorLayerMask = settings.censorLayer;
+        _censorLayerMask = settings.censorLayer.value;
         if (_censorLayerMask != 0)
         {
             // Match the camera settings
