@@ -10,7 +10,8 @@ Shader "Hidden/CensorEffect/WhiteMask"
             #pragma fragment frag
             #include "UnityCG.cginc"
 
-            sampler2D _CensorDepthTexture;
+            // This is now populated by a dedicated command buffer at a reliable pipeline stage
+            sampler2D _CensorEffectDepthTexture;
 
             struct appdata {
                 float4 vertex : POSITION;
@@ -30,7 +31,7 @@ Shader "Hidden/CensorEffect/WhiteMask"
 
             fixed4 frag (v2f i) : SV_Target {
                 // Sample the raw depth from the main camera's depth texture.
-                float rawSceneZ = tex2Dproj(_CensorDepthTexture, UNITY_PROJ_COORD(i.screenPos)).r;
+                float rawSceneZ = tex2Dproj(_CensorEffectDepthTexture, UNITY_PROJ_COORD(i.screenPos)).r;
                 // Get the raw depth of the current fragment being rendered.
                 float rawCurrentZ = i.screenPos.z / i.screenPos.w;
 
